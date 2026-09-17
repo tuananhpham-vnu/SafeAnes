@@ -1,6 +1,6 @@
 # Nguồn và cách sử dụng trong code UC04
 
-Ngày đối chiếu: 17/09/2026. Đây là sổ nguồn cho phiên bản 0.1; danh mục rộng hơn nằm trong [kế hoạch](../UC04_RESEARCH_PLAN.md). Nguồn là bài gốc hoặc tài liệu chính thức. Không gán hiệu năng của paper cho code này.
+Ngày đối chiếu: 17/09/2026. Đây là sổ nguồn cho phiên bản 0.2; danh mục rộng hơn nằm trong [kế hoạch](../UC04_RESEARCH_PLAN.md). Nguồn là bài gốc hoặc tài liệu chính thức. Không gán hiệu năng của paper cho code này.
 
 | ID | Nguồn | Thông tin đã đối chiếu | Áp dụng / giới hạn |
 |---|---|---|---|
@@ -12,7 +12,9 @@ Ngày đối chiếu: 17/09/2026. Đây là sổ nguồn cho phiên bản 0.1; d
 | S06 | scikit-learn, **HistGradientBoostingClassifier**. [API](https://scikit-learn.org/stable/modules/generated/sklearn.ensemble.HistGradientBoostingClassifier.html). | Histogram gradient boosting hỗ trợ dữ liệu thiếu. | Baseline có sẵn local; tắt early stopping tự chia mẫu nội bộ. Không gọi mô hình này là LightGBM. |
 | S07 | LightGBM, **LGBMClassifier**. [API](https://lightgbm.readthedocs.io/en/stable/pythonapi/lightgbm.LGBMClassifier.html). | Tham số estimator, số cây, num_leaves, regularization. | Lựa chọn bổ sung khi cài optional dependency; báo rõ khi chưa cài. |
 | S08 | Zhu et al. **Transformer-based deep learning model for real-time prediction of intraoperative hypotension using dynamic time-series vital signs.** PLOS Medicine (2026). [Paper](https://journals.plos.org/plosmedicine/article?id=10.1371/journal.pmed.1005024). | Methods dùng MAP <65 kéo dài ≥1 phút và sinh hiệu dạng số. | Tham khảo endpoint; cách dựng nhãn/split code này là protocol riêng. |
-| S09 | Bai S, Kolter JZ, Koltun V. **An Empirical Evaluation of Generic Convolutional and Recurrent Networks for Sequence Modeling.** 2018. [arXiv](https://arxiv.org/abs/1803.01271). | Kiến trúc TCN cho chuỗi. | Nguồn cho mốc DL tiếp theo; release 0.1 chưa có kết quả GPU. |
+| S09 | Bai S, Kolter JZ, Koltun V. **An Empirical Evaluation of Generic Convolutional and Recurrent Networks for Sequence Modeling.** 2018. [arXiv](https://arxiv.org/abs/1803.01271). | Kiến trúc TCN cho chuỗi. | `models.py`: causal residual convolution, cấu hình riêng UC04; chưa có benchmark GPU. |
+| S10 | PyTorch, [AMP examples](https://docs.pytorch.org/docs/stable/notes/amp_examples.html), [Saving and Loading Models](https://docs.pytorch.org/tutorials/beginner/saving_loading_models.html). | Autocast/GradScaler; lưu state_dict mô hình và optimizer khi resume. | `training.py`: FP16 CUDA, checkpoint mỗi epoch, RNG và source/data hashes; CPU được kiểm thử riêng. |
+| S11 | Nie Y et al. **A Time Series is Worth 64 Words: Long-term Forecasting with Transformers.** ICLR 2023. [arXiv](https://arxiv.org/abs/2211.14730). | Ý tưởng biểu diễn chuỗi theo patch trong kế hoạch gốc. | Transformer của UC04 dùng patch đa kênh và phân loại IOH; không phải bản tái lập đầy đủ PatchTST hoặc mô hình đã chứng minh hiệu năng lâm sàng. |
 
 ## Lựa chọn của dự án
 
@@ -21,4 +23,3 @@ Các lựa chọn sau không được trình bày như chuẩn y khoa hay kết 
 GET API lưu URL, thời điểm UTC, SHA-256, kích thước cho từng response tại `data/vitaldb/raw/*.source.json`. `fetch_report.json`, `dataset.json`, `environment.json` nối nguồn dữ liệu với kết quả. Các file dữ liệu bệnh nhân không được đưa vào Git.
 
 Firecrawl Research đã lỗi kết nối trong phiên tra cứu trước; phiên triển khai dùng công cụ web để đọc nguồn gốc và GET API công khai để xác minh schema thật. Không dùng snippet tìm kiếm để thay dữ liệu. Tài liệu nguồn có thể thay đổi; môi trường chạy được ghi riêng trong artifacts.
-

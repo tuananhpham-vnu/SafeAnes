@@ -58,12 +58,12 @@ def main():
         "- AUROC cao chỉ phản ánh thứ hạng nguy cơ; còn cần độ nhạy và PPV ở ngưỡng cảnh báo đã khóa. Chưa thể tuyên bố đạt yêu cầu chỉ nhờ AUROC.",
         "- Eligibility, history, censoring và recovery làm một số event không có cơ hội dự báo. Metrics lưu cả `events_all` và `event_sensitivity_all` để công bố phần này.",
         "- FA/hour hiện xấp xỉ trên lưới 30 giây; xem [protocol](../docs/PROTOCOL.md). Chưa dùng metric này để nghiệm thu lâm sàng.",
-        "- Đã chạy baseline CPU, chưa có kết quả TCN/Transformer hoặc T4.", "",
+        "- Báo cáo này giữ kết quả baseline CPU. Kết quả DL bổ sung: [TCN](tcn_v1/REPORT.md), [Transformer](transformer_v1/REPORT.md); chưa có benchmark T4.", "",
         "## Bước tiếp theo dựa trên pilot", "",
         "1. Audit các event không đủ cơ hội dự báo và alarm bị censored; rà soát nhãn bằng timeline MAP gốc.",
         "2. Mở rộng pilot trong global train để calibration/validation có nhiều bệnh nhân và biến cố hơn; giữ final test chưa mở.",
         "3. Cải thiện evaluator exposure từng giây và kiểm tra độ nhạy với recovery/persistence/cooldown trong development; không hạ mục tiêu chất lượng.",
-        "4. Triển khai TCN và sequence loader dùng cùng split/nhãn/evaluator, đo VRAM và thời gian trên T4 rồi mới kết luận giá trị tăng thêm.", "",
+        "4. TCN và sequence loader đã được bổ sung với cùng split/nhãn/evaluator; cần mở rộng dữ liệu, đo VRAM và thời gian trên T4 trước kết luận giá trị tăng thêm.", "",
         "## Nguồn của phương pháp", "",
         "Dữ liệu từ [VitalDB](https://doi.org/10.1038/s41597-022-01411-5); API theo [tài liệu chính thức](https://vitaldb.net/docs/?documentId=API%2FWeb_API_OpenDataset.md). Đánh giá liên tục được thúc đẩy bởi nghiên cứu [selection bias của Yang et al.](https://pubmed.ncbi.nlm.nih.gov/40404499/). Calibration dựa trên [scikit-learn](https://scikit-learn.org/stable/modules/calibration.html). Các quy tắc cụ thể là thiết kế dự án, được phân biệt trong [sổ nguồn](../docs/SOURCES.md).", "",
         "Artifacts dùng để sinh báo cáo:", ""]
@@ -76,4 +76,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-

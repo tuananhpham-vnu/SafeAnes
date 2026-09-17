@@ -1,6 +1,8 @@
 # SafeAnes UC04 — Kế hoạch nghiên cứu và triển khai trên Kaggle T4 16 GB
 
-Ngày tra cứu: 17/09/2026. Phạm vi: dự báo sớm tụt huyết áp trong mổ, hiệu chỉnh xác suất, đánh giá cảnh báo và lộ trình nghiên cứu nguyên nhân. Đã bắt đầu triển khai pipeline numeric và baseline CPU trên pilot VitalDB; chưa có kết quả deep learning/T4 hoặc nghiệm thu hiệu năng. Xem [các bước triển khai](docs/IMPLEMENTATION_STEPS.md), [nguồn gắn với code](docs/SOURCES.md), [protocol thực thi](docs/PROTOCOL.md) và [báo cáo pilot](reports/PILOT_BASELINE.md).
+Ngày tra cứu/cập nhật: 17/09/2026. Phạm vi: dự báo sớm tụt huyết áp trong mổ, hiệu chỉnh xác suất, đánh giá cảnh báo và lộ trình nghiên cứu nguyên nhân. Phiên bản 0.2 đã triển khai pipeline numeric, baseline, TCN/Transformer, calibration, checkpoint/resume và báo cáo/phát lại ca. Thực nghiệm hiện dùng pilot VitalDB trên CPU; chưa có benchmark T4/Kaggle hoặc nghiệm thu hiệu năng. Xem [trạng thái và phần còn thiếu ở mục 13](#13-trạng-thái-bàn-giao-và-các-mốc-còn-thiếu).
+
+Tài liệu thực thi: [các bước triển khai](docs/IMPLEMENTATION_STEPS.md), [runbook và lệnh chạy](docs/SEQUENCE_RUNBOOK.md), [nguồn gắn với code](docs/SOURCES.md), [protocol](docs/PROTOCOL.md), [model card](docs/MODEL_CARD.md), [data card](docs/DATA_CARD.md). Kết quả đo: [baseline](reports/PILOT_BASELINE.md), [TCN](reports/tcn_v1/REPORT.md), [Transformer](reports/transformer_v1/REPORT.md); [biên bản kiểm thử và thực nghiệm](reports/IMPLEMENTATION_VALIDATION.md).
 
 ## 1. Hướng đề xuất
 
@@ -226,32 +228,36 @@ Nếu muốn đưa waveform vào so sánh xác nhận ngay trong bản đầu, c
 
 Để hoàn thiện UC04: kiểm định ngoài với mô hình/ngưỡng đã khóa → thu dữ liệu bệnh viện và đánh giá tiến cứu ở chế độ im lặng → kiểm chứng nhánh cơ chế → nghiên cứu tác động của cảnh báo cùng nhóm lâm sàng. Cỡ mẫu mỗi giai đoạn dựa trên số biến cố và độ chính xác ước lượng, không chỉ một mốc tổng số ca.
 
-## 11. Cấu trúc triển khai dự kiến
+## 11. Cấu trúc triển khai hiện tại
 
 ```text
 notebooks/
-  01_cohort_and_quality.ipynb
-  02_numeric_dataset.ipynb
-  03_baselines.ipynb
-  04_tcn_and_transformer.ipynb
-  05_calibration_and_alarm_evaluation.ipynb
-  06_case_replay.ipynb
-src/
-  cohort.py
-  preprocessing.py
-  labeling.py
-  features.py
-  datasets.py
-  models/
-  calibration.py
-  alarms.py
-  evaluation.py
+  01_uc04_pilot.ipynb
+  02_numeric_sequences.ipynb
+  03_tcn_transformer.ipynb
+  04_case_replay.ipynb
+src/safeanes/
+  config.py          # protocol, tracks, validity bounds
+  data.py            # cohort, subject split, raw provenance
+  signals.py         # causal sampling và nhãn
+  dataset.py         # windows, feature baseline và QC
+  sequences.py       # mảng theo ca, memmap, scaler fit-only
+  experiment.py      # baseline và calibration riêng bệnh nhân
+  models.py          # TCN/Transformer, ordered heads, masked BCE
+  training.py        # AMP, early stopping, calibration, resume
+  evaluation.py      # alarm replay, matching, metric, bootstrap
+  reporting.py       # báo cáo, calibration/subgroup, hình replay
+  cli.py
 configs/
+  tcn.json
+  transformer.json
+tests/
+docs/
 reports/
 artifacts/  # manifest, metrics, configs, checkpoints; dữ liệu lớn lưu riêng
 ```
 
-Các kiểm thử có ý nghĩa khi bắt đầu code: không trùng subjectid; feature không đọc tương lai; sự kiện sát ranh giới 5/10 phút; biến cố dài đúng 60 giây; missingness không bị gán âm; nhãn hai horizon nhất quán; matching/cooldown không đếm lặp; scaler/calibrator không fit test.
+Các kiểm thử đã có: không trùng subjectid; feature/sequence/causal convolution không đọc tương lai; sự kiện sát ranh giới 5/10 phút; biến cố dài đúng 60 giây; missingness không bị gán âm; nhãn hai horizon nhất quán; matching/cooldown không đếm lặp; normalizer chỉ fit ca fit; ordered probability sau calibration; khôi phục checkpoint và resume cho kết quả CPU khớp lần chạy liên tục. Chạy bằng `python -m pytest -q` với dependencies phù hợp. Kiểm thử phần mềm không thay thế audit nhãn bằng chuyên gia hoặc xác nhận chất lượng dự báo.
 
 ## 12. Giới hạn tra cứu và đầu vào để cập nhật
 
@@ -266,3 +272,24 @@ hardware: single NVIDIA T4 16 GB
 data_default: VitalDB
 output: Vietnamese research and implementation plan
 ```
+
+## 13. Trạng thái bàn giao và các mốc còn thiếu
+
+Không đánh dấu toàn bộ nghiên cứu hoàn thành chỉ vì đã có code. Trạng thái dưới đây phân biệt sản phẩm đã triển khai với bằng chứng thực nghiệm còn cần bổ sung.
+
+| Hạng mục | Trạng thái | Bằng chứng / điều kiện còn thiếu |
+|---|---|---|
+| Pilot dữ liệu thật và provenance | Đã chạy 60 ca/60 bệnh nhân; 19.869 decision; 85 đợt IOH | Raw hashes, manifest, quality và báo cáo baseline. |
+| Cohort đúng phạm vi kế hoạch | Chưa xác nhận đầy đủ | Code lọc tuổi/gây mê/MAP/interval; cần audit tiêu chí không tim theo metadata như data card. |
+| Baseline MAP/logistic/boosting | Đã chạy CPU | Baseline hiện chưa đạt mọi mục tiêu mục 8. |
+| Dataset chuỗi và TCN/Transformer | Đã triển khai và chạy pilot CPU | Cùng nhãn, vai trò bệnh nhân và evaluator; chưa phải phép đo T4. |
+| Calibration, alarm và CI | Đã có trong pipeline | Calibration DL bảo toàn p10≥p5; CI bootstrap bệnh nhân; exposure còn xấp xỉ 30 giây. |
+| Notebook, checkpoint/resume và replay | Đã có code, kiểm thử và output local | Notebook Kaggle cần chạy thực trên tài khoản có T4 và lưu log môi trường. |
+| Độ chính xác yêu cầu | Chưa nghiệm thu | Đọc bảng metric/gates từng run; không dùng AUROC đơn lẻ để đánh dấu đạt. |
+| Ba seed, ablation và cohort lớn | Cấu hình/lệnh sẵn sàng, chưa chạy đủ ma trận | MAP-only/numeric/+static, mask/time-since; chọn bằng validation; báo mọi seed. |
+| Evaluator cho nghiên cứu xác nhận | Còn thiếu | Exposure từng giây, CI cho lead time/subgroup, audit nhãn/eligibility và luồng cảnh báo hợp nhất nếu có. |
+| Waveform | Chưa triển khai, có điều kiện | Cần bằng chứng validation và cohort giao để so lợi ích với chi phí. |
+| Final test, kiểm định ngoài, tiến cứu | Chưa chạy | Final test giữ chưa sử dụng; cần protocol khóa và dữ liệu/quyền truy cập phù hợp. |
+| Nhãn/cơ chế nguyên nhân | Chưa có bộ nhãn chuyên gia | Rubric và pilot gán nhãn như mục 9; không lấy attribution thay nhãn cơ chế. |
+
+Lệnh thực thi và cách nối các notebook được ghi tại [SEQUENCE_RUNBOOK.md](docs/SEQUENCE_RUNBOOK.md). Kết quả không đạt phải dẫn tới vòng development mới có ghi nhận cohort/config/seed; mục tiêu nghiên cứu và giới hạn lâm sàng của kế hoạch được giữ nguyên.

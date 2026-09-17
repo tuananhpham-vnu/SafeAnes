@@ -1,0 +1,473 @@
+{
+  "transformer_300": {
+    "calibration": {
+      "bins": [
+        {
+          "left": 0.0,
+          "right": 0.1,
+          "count": 1520,
+          "mean_probability": 0.005209531733754852,
+          "event_fraction": 0.014473684210526316
+        },
+        {
+          "left": 0.1,
+          "right": 0.2,
+          "count": 33,
+          "mean_probability": 0.14220749812595768,
+          "event_fraction": 0.0
+        },
+        {
+          "left": 0.2,
+          "right": 0.3,
+          "count": 0,
+          "mean_probability": null,
+          "event_fraction": null
+        },
+        {
+          "left": 0.3,
+          "right": 0.4,
+          "count": 0,
+          "mean_probability": null,
+          "event_fraction": null
+        },
+        {
+          "left": 0.4,
+          "right": 0.5,
+          "count": 0,
+          "mean_probability": null,
+          "event_fraction": null
+        },
+        {
+          "left": 0.5,
+          "right": 0.6,
+          "count": 0,
+          "mean_probability": null,
+          "event_fraction": null
+        },
+        {
+          "left": 0.6,
+          "right": 0.7,
+          "count": 0,
+          "mean_probability": null,
+          "event_fraction": null
+        },
+        {
+          "left": 0.7,
+          "right": 0.8,
+          "count": 0,
+          "mean_probability": null,
+          "event_fraction": null
+        },
+        {
+          "left": 0.8,
+          "right": 0.9,
+          "count": 0,
+          "mean_probability": null,
+          "event_fraction": null
+        },
+        {
+          "left": 0.9,
+          "right": 1.0,
+          "count": 0,
+          "mean_probability": null,
+          "event_fraction": null
+        }
+      ],
+      "slope": 0.8840676280266732,
+      "intercept": 0.21415266493817106,
+      "note": "Descriptive diagnostic on held-out pilot predictions; not a fitted deployment calibrator"
+    },
+    "subgroups": {
+      "age_lt65": {
+        "patients": 5,
+        "cases": 5,
+        "auroc": 0.9648463593854375,
+        "average_precision": 0.14901181102201377,
+        "brier": 0.011332446085333974,
+        "ece": 0.008971108581137774,
+        "prevalence": 0.011881188118811881,
+        "events_all": 8,
+        "events_eligible": 2,
+        "events_detected": 0,
+        "events_early_5min": 0,
+        "true_alarms": 0,
+        "false_alarms": 0,
+        "censored_alarms": 0,
+        "known_windows": 1010,
+        "event_sensitivity": 0.0,
+        "event_sensitivity_all": 0.0,
+        "early_5min_sensitivity": 0.0,
+        "alarm_ppv": null,
+        "false_alarms_per_hour": 0.0,
+        "prediction_coverage": 0.8674796747967479,
+        "evaluable_hours": 8.416666666666666,
+        "lead_seconds_median": null,
+        "lead_seconds_q25": null,
+        "lead_seconds_q75": null,
+        "threshold": 1.000001,
+        "horizon_seconds": 300,
+        "exposure_method": "30-second decision-grid approximation; see PROTOCOL.md"
+      },
+      "age_ge65": {
+        "patients": 4,
+        "cases": 4,
+        "auroc": 0.899624765478424,
+        "average_precision": 0.08835939786226463,
+        "brier": 0.01864680831736119,
+        "ece": 0.017888654762246922,
+        "prevalence": 0.01841620626151013,
+        "events_all": 1,
+        "events_eligible": 1,
+        "events_detected": 0,
+        "events_early_5min": 0,
+        "true_alarms": 0,
+        "false_alarms": 0,
+        "censored_alarms": 0,
+        "known_windows": 543,
+        "event_sensitivity": 0.0,
+        "event_sensitivity_all": 0.0,
+        "early_5min_sensitivity": 0.0,
+        "alarm_ppv": null,
+        "false_alarms_per_hour": 0.0,
+        "prediction_coverage": 0.9725806451612903,
+        "evaluable_hours": 4.525,
+        "lead_seconds_median": null,
+        "lead_seconds_q25": null,
+        "lead_seconds_q75": null,
+        "threshold": 1.000001,
+        "horizon_seconds": 300,
+        "exposure_method": "30-second decision-grid approximation; see PROTOCOL.md"
+      },
+      "asa_le2": {
+        "patients": 9,
+        "cases": 9,
+        "auroc": 0.940888308295232,
+        "average_precision": 0.10381231103939373,
+        "brier": 0.013889882461374396,
+        "ece": 0.012089091566548117,
+        "prevalence": 0.014166130070830651,
+        "events_all": 9,
+        "events_eligible": 3,
+        "events_detected": 0,
+        "events_early_5min": 0,
+        "true_alarms": 0,
+        "false_alarms": 0,
+        "censored_alarms": 0,
+        "known_windows": 1553,
+        "event_sensitivity": 0.0,
+        "event_sensitivity_all": 0.0,
+        "early_5min_sensitivity": 0.0,
+        "alarm_ppv": null,
+        "false_alarms_per_hour": 0.0,
+        "prediction_coverage": 0.9027027027027027,
+        "evaluable_hours": 12.941666666666666,
+        "lead_seconds_median": null,
+        "lead_seconds_q25": null,
+        "lead_seconds_q75": null,
+        "threshold": 1.000001,
+        "horizon_seconds": 300,
+        "exposure_method": "30-second decision-grid approximation; see PROTOCOL.md"
+      }
+    },
+    "ci95": {
+      "unit": "subjectid",
+      "repeats": 200,
+      "intervals": {
+        "auroc": {
+          "low": 0.891135718383307,
+          "high": 0.9752057192216768,
+          "valid_replicates": 197
+        },
+        "average_precision": {
+          "low": 0.0385194929161553,
+          "high": 0.20471528707094558,
+          "valid_replicates": 197
+        },
+        "brier": {
+          "low": 0.0021281018242394465,
+          "high": 0.024112598174392486,
+          "valid_replicates": 200
+        },
+        "ece": {
+          "low": 0.003611743147242362,
+          "high": 0.022997804646196773,
+          "valid_replicates": 200
+        },
+        "event_sensitivity": {
+          "low": 0.0,
+          "high": 0.0,
+          "valid_replicates": 197
+        },
+        "alarm_ppv": {
+          "low": null,
+          "high": null,
+          "valid_replicates": 0
+        },
+        "false_alarms_per_hour": {
+          "low": 0.0,
+          "high": 0.0,
+          "valid_replicates": 200
+        },
+        "early_5min_sensitivity": {
+          "low": 0.0,
+          "high": 0.0,
+          "valid_replicates": 197
+        },
+        "prediction_coverage": {
+          "low": 0.728079483781396,
+          "high": 0.979151322193381,
+          "valid_replicates": 200
+        }
+      }
+    },
+    "targets": {
+      "criteria": {
+        "auroc": false,
+        "event_sensitivity": false,
+        "alarm_ppv": false,
+        "prediction_coverage": true,
+        "false_alarms_per_hour": true,
+        "ece": true
+      },
+      "all_point_targets_met": false,
+      "note": "Proposed research targets; pilot results never establish clinical validation"
+    },
+    "selection": "exploratory_fallback_targets_unmet"
+  },
+  "transformer_600": {
+    "calibration": {
+      "bins": [
+        {
+          "left": 0.0,
+          "right": 0.1,
+          "count": 1387,
+          "mean_probability": 0.0067548601008478966,
+          "event_fraction": 0.02595529920692141
+        },
+        {
+          "left": 0.1,
+          "right": 0.2,
+          "count": 31,
+          "mean_probability": 0.14252646940369756,
+          "event_fraction": 0.16129032258064516
+        },
+        {
+          "left": 0.2,
+          "right": 0.3,
+          "count": 23,
+          "mean_probability": 0.24823461732138757,
+          "event_fraction": 0.0
+        },
+        {
+          "left": 0.3,
+          "right": 0.4,
+          "count": 16,
+          "mean_probability": 0.3494913075119257,
+          "event_fraction": 0.0
+        },
+        {
+          "left": 0.4,
+          "right": 0.5,
+          "count": 0,
+          "mean_probability": null,
+          "event_fraction": null
+        },
+        {
+          "left": 0.5,
+          "right": 0.6,
+          "count": 0,
+          "mean_probability": null,
+          "event_fraction": null
+        },
+        {
+          "left": 0.6,
+          "right": 0.7,
+          "count": 0,
+          "mean_probability": null,
+          "event_fraction": null
+        },
+        {
+          "left": 0.7,
+          "right": 0.8,
+          "count": 0,
+          "mean_probability": null,
+          "event_fraction": null
+        },
+        {
+          "left": 0.8,
+          "right": 0.9,
+          "count": 0,
+          "mean_probability": null,
+          "event_fraction": null
+        },
+        {
+          "left": 0.9,
+          "right": 1.0,
+          "count": 0,
+          "mean_probability": null,
+          "event_fraction": null
+        }
+      ],
+      "slope": 0.5897779020059232,
+      "intercept": -0.6961613998812611,
+      "note": "Descriptive diagnostic on held-out pilot predictions; not a fitted deployment calibrator"
+    },
+    "subgroups": {
+      "age_lt65": {
+        "patients": 5,
+        "cases": 5,
+        "auroc": 0.8144936355798975,
+        "average_precision": 0.10890779154226737,
+        "brier": 0.02137206138341199,
+        "ece": 0.016171062230523652,
+        "prevalence": 0.021875,
+        "events_all": 8,
+        "events_eligible": 3,
+        "events_detected": 0,
+        "events_early_5min": 0,
+        "true_alarms": 0,
+        "false_alarms": 0,
+        "censored_alarms": 0,
+        "known_windows": 960,
+        "event_sensitivity": 0.0,
+        "event_sensitivity_all": 0.0,
+        "early_5min_sensitivity": 0.0,
+        "alarm_ppv": null,
+        "false_alarms_per_hour": 0.0,
+        "prediction_coverage": 0.8674796747967479,
+        "evaluable_hours": 8.0,
+        "lead_seconds_median": null,
+        "lead_seconds_q25": null,
+        "lead_seconds_q75": null,
+        "threshold": 0.4371794871794872,
+        "horizon_seconds": 600,
+        "exposure_method": "30-second decision-grid approximation; see PROTOCOL.md"
+      },
+      "age_ge65": {
+        "patients": 4,
+        "cases": 4,
+        "auroc": 0.8667714884696017,
+        "average_precision": 0.1314398727194465,
+        "brier": 0.04271244483401282,
+        "ece": 0.048796159266803446,
+        "prevalence": 0.04024144869215292,
+        "events_all": 1,
+        "events_eligible": 1,
+        "events_detected": 0,
+        "events_early_5min": 0,
+        "true_alarms": 0,
+        "false_alarms": 0,
+        "censored_alarms": 0,
+        "known_windows": 497,
+        "event_sensitivity": 0.0,
+        "event_sensitivity_all": 0.0,
+        "early_5min_sensitivity": 0.0,
+        "alarm_ppv": null,
+        "false_alarms_per_hour": 0.0,
+        "prediction_coverage": 0.9725806451612903,
+        "evaluable_hours": 4.141666666666667,
+        "lead_seconds_median": null,
+        "lead_seconds_q25": null,
+        "lead_seconds_q75": null,
+        "threshold": 0.4371794871794872,
+        "horizon_seconds": 600,
+        "exposure_method": "30-second decision-grid approximation; see PROTOCOL.md"
+      },
+      "asa_le2": {
+        "patients": 9,
+        "cases": 9,
+        "auroc": 0.8456145790271462,
+        "average_precision": 0.11414223921308779,
+        "brier": 0.02865151956800266,
+        "ece": 0.026433730684414593,
+        "prevalence": 0.028140013726835965,
+        "events_all": 9,
+        "events_eligible": 4,
+        "events_detected": 0,
+        "events_early_5min": 0,
+        "true_alarms": 0,
+        "false_alarms": 0,
+        "censored_alarms": 0,
+        "known_windows": 1457,
+        "event_sensitivity": 0.0,
+        "event_sensitivity_all": 0.0,
+        "early_5min_sensitivity": 0.0,
+        "alarm_ppv": null,
+        "false_alarms_per_hour": 0.0,
+        "prediction_coverage": 0.9027027027027027,
+        "evaluable_hours": 12.141666666666667,
+        "lead_seconds_median": null,
+        "lead_seconds_q25": null,
+        "lead_seconds_q75": null,
+        "threshold": 0.4371794871794872,
+        "horizon_seconds": 600,
+        "exposure_method": "30-second decision-grid approximation; see PROTOCOL.md"
+      }
+    },
+    "ci95": {
+      "unit": "subjectid",
+      "repeats": 200,
+      "intervals": {
+        "auroc": {
+          "low": 0.7887177764399311,
+          "high": 0.955904745722724,
+          "valid_replicates": 197
+        },
+        "average_precision": {
+          "low": 0.04270186335403727,
+          "high": 0.15182892944933618,
+          "valid_replicates": 197
+        },
+        "brier": {
+          "low": 0.002461639174795104,
+          "high": 0.04944196789318901,
+          "valid_replicates": 200
+        },
+        "ece": {
+          "low": 0.007056961365897852,
+          "high": 0.04882941312176402,
+          "valid_replicates": 200
+        },
+        "event_sensitivity": {
+          "low": 0.0,
+          "high": 0.0,
+          "valid_replicates": 197
+        },
+        "alarm_ppv": {
+          "low": null,
+          "high": null,
+          "valid_replicates": 0
+        },
+        "false_alarms_per_hour": {
+          "low": 0.0,
+          "high": 0.0,
+          "valid_replicates": 200
+        },
+        "early_5min_sensitivity": {
+          "low": 0.0,
+          "high": 0.0,
+          "valid_replicates": 197
+        },
+        "prediction_coverage": {
+          "low": 0.728079483781396,
+          "high": 0.979151322193381,
+          "valid_replicates": 200
+        }
+      }
+    },
+    "targets": {
+      "criteria": {
+        "auroc": false,
+        "event_sensitivity": false,
+        "alarm_ppv": false,
+        "prediction_coverage": true,
+        "early_5min_sensitivity": false,
+        "false_alarms_per_hour": true,
+        "ece": true
+      },
+      "all_point_targets_met": false,
+      "note": "Proposed research targets; pilot results never establish clinical validation"
+    },
+    "selection": "exploratory_fallback_targets_unmet"
+  }
+}

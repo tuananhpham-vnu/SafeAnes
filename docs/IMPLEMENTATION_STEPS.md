@@ -8,9 +8,8 @@ Yêu cầu xuyên suốt: độ chính xác cao và ít cảnh báo giả theo m
 | 2 | Endpoint, horizon, rò rỉ thời gian | S03/S08 + protocol dự án | `signals.py`, `dataset.py` | Test ranh giới/missing/future perturbation qua; QC dữ liệu thật |
 | 3 | Baseline và calibration độc lập | S04/S05/S06/S07 | `experiment.py` | Đúng split; báo cáo cả mục tiêu không đạt |
 | 4 | Alarm và khoảng tin cậy | S03/S05 + protocol dự án | `evaluation.py`, report/CI | Không đếm lặp event; censored xử lý đúng; audit exposure |
-| 5 | TCN causal, sequence loader tiết kiệm RAM | S09 và PyTorch chính thức | Mốc tiếp: trainer/checkpoint FP16 | Cùng label/split/evaluator; đo VRAM T4 thật |
-| 6 | Transformer nhỏ, waveform fusion | Zhu/HypoBridCast trong kế hoạch | Ablation | Thêm độ phức tạp phải cải thiện metric chính |
+| 5 | TCN causal, sequence loader tiết kiệm RAM | S09/S10 | `sequences.py`, `models.py`, `training.py`; FP16/checkpoint/resume | Code và kiểm thử đã có; benchmark T4 chưa chạy |
+| 6 | Transformer nhỏ, waveform fusion | S11; Zhu/HypoBridCast trong kế hoạch | Transformer numeric và cấu hình ablation đã có; waveform chưa triển khai | Thêm độ phức tạp phải cải thiện metric chính |
 | 7 | Final test và kiểm định ngoài | Protocol khóa, VitalDB/MOVER | Báo cáo riêng từng cohort | Đạt mục tiêu hoặc ghi chưa đạt; không tune test |
 
-S01–S09 có đầy đủ citation trong [SOURCES.md](SOURCES.md). Bước 1–4 là phạm vi code đầu; bước 5–7 dựa trên kết quả thực nghiệm. Nhánh nguyên nhân cần bộ nhãn chuyên gia riêng như kế hoạch gốc.
-
+S01–S11 có citation trong [SOURCES.md](SOURCES.md). Release 0.2 bổ sung nhánh numeric bước 5–6 và báo cáo/replay (`reporting.py`). Xem [runbook](SEQUENCE_RUNBOOK.md). Benchmark T4, waveform, final test và nhánh nguyên nhân chưa hoàn tất; nhánh nguyên nhân cần bộ nhãn chuyên gia riêng như kế hoạch gốc.

@@ -1,4 +1,4 @@
-# Protocol code v0.1 — pilot numeric UC04
+# Protocol numeric v1 — triển khai UC04 v0.2
 
 Trạng thái: thử nghiệm kỹ thuật, chưa phải mô hình đạt mục tiêu. Các ID nguồn nằm trong [SOURCES.md](SOURCES.md). Khi thay nhãn/feature, tăng `Protocol.version`, tạo dataset mới và giữ hash cũ.
 
@@ -8,7 +8,7 @@ Theo S01/S02: tuổi ≥18, `ane_type=General`, có `Solar8000/ART_MBP`, `opstar
 
 SHA-256(seed, subjectid) chia xấp xỉ 70% train, 7,5% calibration, 7,5% validation, 15% test. Đây là tỷ lệ kỳ vọng, không ép số lượng chính xác. Thêm ca không làm thay đổi split cũ; mọi lần mổ của một người cùng split.
 
-`fetch-pilot` chỉ tải tín hiệu global train. Pilot tách tiếp theo bệnh nhân: 60% fit, 15% calibration, 10% validation, 15% pilot_test. **pilot_test vẫn thuộc global train**, chỉ dùng thăm dò/sửa pipeline; không phải final test. Release 0.1 không tự mở final test.
+`fetch-pilot` chỉ tải tín hiệu global train. Pilot tách tiếp theo bệnh nhân: 60% fit, 15% calibration, 10% validation, 15% pilot_test. **pilot_test vẫn thuộc global train**, chỉ dùng thăm dò/sửa pipeline; không phải final test. Release 0.2 không tự mở final test.
 
 ## Input và nhãn tách riêng
 
@@ -44,7 +44,16 @@ AUROC/AP thiếu một lớp trả null; ECE có 10 bin bằng nhau trên [0,1].
 
 Threshold chọn từ grid cố định trên validation, ưu tiên đạt toàn bộ tiêu chí; nếu không có thì tối ưu sensitivity trong giới hạn FA/hour và ghi `exploratory_fallback_targets_unmet`. Fallback không có nghĩa đạt yêu cầu.
 
-## Chưa triển khai trong release 0.1
+## Bổ sung triển khai numeric trong release 0.2
 
-TCN/Transformer, waveform artifact detector, train T4, kiểm định ngoài, nhãn cơ chế và khuyến nghị điều trị. Trước mở global final test: rà soát nhãn với chuyên gia, audit censored/exclusion, hoàn thiện exposure, chốt model/threshold/protocol/hash. Sửa sau khi mở test cần holdout mới hoặc công bố exploratory.
+Nhãn, split và evaluator v1 được giữ để so sánh với baseline. `sequences.py` dùng chung `sample_case` với feature pipeline; cửa sổ memmap 300 bước. TCN 7 residual block và Transformer 2 layer theo patch được huấn luyện bằng BCE hai horizon, bỏ riêng các nhãn -1. Scaler chỉ fit ca fit. Checkpoint chọn bằng BCE validation; calibration trên bệnh nhân calibration; ngưỡng trên validation. Hai tác vụ tuning/threshold còn dùng chung validation trong pilot và cần tách/OOF trước vòng xác nhận.
 
+Đầu ra DL có `logit600=logit300+softplus(delta)`. Calibration dùng temperature dương và bias chung, bảo toàn p600≥p300; không dùng sigmoid độc lập như baseline. Đây là adaptation dự án, không phải tái lập chính xác một paper. Chưa đánh giá một luồng alarm hợp nhất hai horizon.
+
+CUDA dùng FP16 autocast và GradScaler; CPU dùng FP32. Checkpoint lưu model, optimizer, scaler, RNG, config, split và source/data hashes; run hoàn tất không ghi đè. Xem [runbook](SEQUENCE_RUNBOOK.md) để thực thi và resume.
+
+`reporting.py` bổ sung reliability bins, slope/intercept mô tả, phân nhóm tuổi/ASA theo toàn ca và hình replay từ output thật. Không dùng diagnostic test để sửa calibrator. Protocol v1 còn xấp xỉ exposure và coverage trên lưới decision; chưa cung cấp exposure từng giây hoặc CI riêng cho lead-time/subgroup.
+
+## Các mốc còn thiếu trước nghiệm thu
+
+Train/benchmark T4, waveform artifact detector, kiểm định ngoài, nhãn cơ chế và khuyến nghị điều trị chưa hoàn tất. Trước mở global final test: rà soát nhãn với chuyên gia, xác nhận cohort không tim, audit censored/exclusion, hoàn thiện exposure, chốt model/threshold/protocol/hash. Sửa sau khi mở test cần holdout mới hoặc công bố exploratory.

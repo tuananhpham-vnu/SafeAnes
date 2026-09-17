@@ -39,8 +39,8 @@ def feature_row(sampled, ages, grid, t, protocol):
     return result
 
 
-def build_case(meta, raw_tracks, protocol=Protocol()):
-    """Returns all decision rows (including abstentions), labels, events and audit."""
+def sample_case(meta, raw_tracks, protocol=Protocol()):
+    """One causal numeric preprocessing path shared by features and sequences."""
     start, end = int(np.ceil(meta["opstart"])), int(np.floor(meta["opend"]))
     if end <= start:
         raise ValueError("Empty surgery interval")
@@ -60,6 +60,13 @@ def build_case(meta, raw_tracks, protocol=Protocol()):
     sampled, ages = {}, {}
     for name, (times, values) in cleaned.items():
         sampled[name], ages[name] = causal_sample(times, values, numeric_grid, protocol.feature_max_age_seconds)
+    return grid, numeric_grid, cleaned, sampled, ages
+
+
+def build_case(meta, raw_tracks, protocol=Protocol()):
+    """Returns all decision rows (including abstentions), labels, events and audit."""
+    grid, numeric_grid, cleaned, sampled, ages = sample_case(meta, raw_tracks, protocol)
+    end = int(np.floor(meta["opend"]))
     mt, mv = cleaned["map"]
     truth = label_grid(mt, mv, grid, protocol.label_max_gap_seconds)
     events = detect_events(grid, truth, protocol)
@@ -94,7 +101,7 @@ def build_case(meta, raw_tracks, protocol=Protocol()):
             record[f"eligible_{horizon}"] = bool((opportunity & frame.eligible & frame[f"y_{horizon}"].eq(1)).any())
         event_rows.append(record)
     audit = {"caseid": int(meta["caseid"]), "subjectid": int(meta["subjectid"]),
-             "surgery_seconds": end - start, "label_coverage": float(np.isfinite(truth).mean()),
+             "surgery_seconds": end - int(grid[0]), "label_coverage": float(np.isfinite(truth).mean()),
              "events": len(events), "decision_rows": len(rows),
              "eligible_rows": int(frame.eligible.sum()) if len(frame) else 0,
              "median_map_update_seconds": float(np.median(np.diff(mt))) if len(mt) > 1 else None}
@@ -140,4 +147,3 @@ def build_pilot(root, out, protocol=Protocol()):
         "manifest_sha256": hashlib.sha256((root / "pilot_manifest.csv").read_bytes()).hexdigest(),
         "windows_sha256": hashlib.sha256((out / "windows.csv.gz").read_bytes()).hexdigest()})
     return {"cases": len(manifest), "windows": len(windows), "events": len(event_rows)}
-

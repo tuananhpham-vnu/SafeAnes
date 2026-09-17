@@ -1,11 +1,13 @@
 # SafeAnes
 
-UC04: dự báo sớm tụt huyết áp trong mổ. Release 0.1 chạy **dữ liệu thật → nhãn → baseline → calibration → cảnh báo**, dùng riêng global train để giữ final test chưa sử dụng.
+UC04: dự báo sớm tụt huyết áp trong mổ. Release 0.2 chạy **dữ liệu thật → nhãn → baseline/TCN/Transformer → calibration → cảnh báo → báo cáo và phát lại**, dùng riêng global train để giữ final test chưa sử dụng.
 
 - [Kế hoạch và yêu cầu độ chính xác](UC04_RESEARCH_PLAN.md)
 - [Các bước tìm hiểu/triển khai](docs/IMPLEMENTATION_STEPS.md)
 - [Nguồn và ánh xạ vào code](docs/SOURCES.md)
 - [Protocol và giới hạn](docs/PROTOCOL.md)
+- [Hướng dẫn TCN/Transformer, resume và ablation](docs/SEQUENCE_RUNBOOK.md)
+- [Model card](docs/MODEL_CARD.md) · [Data card](docs/DATA_CARD.md)
 
 ## Chạy local
 
@@ -25,7 +27,20 @@ Baseline mặc định: score MAP, logistic MAP/slope/variability, HistGradientB
 
 ## Kaggle
 
-Dùng [notebook từng bước](notebooks/01_uc04_pilot.ipynb). Đưa source repository vào Kaggle Input và sửa `PROJECT_ROOT` theo đường dẫn thật. Output ở `/kaggle/working`; Internet bật cho bước tải API. Baseline chạy CPU, T4 dành cho mốc TCN tiếp theo; code hiện tại chưa đo hiệu năng GPU.
+Dùng [notebook baseline](notebooks/01_uc04_pilot.ipynb), [chuẩn bị sequence](notebooks/02_numeric_sequences.ipynb), [train TCN/Transformer](notebooks/03_tcn_transformer.ipynb) và [phát lại/báo cáo](notebooks/04_case_replay.ipynb). Sửa đường dẫn Input theo tài khoản; output ở `/kaggle/working`. Chạy bước chuẩn bị dữ liệu trên CPU và chỉ bật T4 cho notebook train. Chưa có benchmark thực thi trên T4/Kaggle.
+
+## TCN và Transformer
+
+```sh
+python -m pip install -e ".[deep,plots]"
+python -m safeanes.cli build-sequences --dataset data/pilot_v1 --root data/vitaldb --out data/sequences_v1
+python -m safeanes.cli train-sequence --config configs/tcn.json --out artifacts/tcn_v1
+python -m safeanes.cli train-sequence --config configs/transformer.json --out artifacts/transformer_v1
+python -m safeanes.cli report --run artifacts/tcn_v1 --out reports/tcn_v1
+python -m safeanes.cli report --run artifacts/transformer_v1 --out reports/transformer_v1
+```
+
+Mỗi output phải mới/rỗng. Với lần train bị gián đoạn, thêm `--resume` và giữ nguyên code/data/config; xem [runbook](docs/SEQUENCE_RUNBOOK.md). CUDA dùng FP16, CPU dùng FP32. Không coi việc hoàn tất train là đạt mục tiêu hiệu năng.
 
 ## Đầu ra
 

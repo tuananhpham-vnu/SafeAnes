@@ -1,4 +1,4 @@
-"""Commands intentionally stop at a TRAIN-pool pilot in release 0.1."""
+"""Research commands keep the global final test sealed."""
 
 import argparse
 import json
@@ -24,11 +24,40 @@ def main():
     train.add_argument("--models", nargs="+", default=["map", "logistic", "hist_gradient"],
                        choices=["map", "logistic", "hist_gradient", "lightgbm"])
     train.add_argument("--bootstrap", type=int, default=200)
+    sequence = sub.add_parser("build-sequences", help="Cache causal numeric arrays from existing pilot raw data")
+    sequence.add_argument("--dataset", default="data/pilot_v1")
+    sequence.add_argument("--root", default="data/vitaldb")
+    sequence.add_argument("--out", default="data/sequences_v1")
+    deep = sub.add_parser("train-sequence", help="Train TCN/Transformer in the global training pool")
+    deep.add_argument("--dataset", default="data/pilot_v1")
+    deep.add_argument("--sequences", default="data/sequences_v1")
+    deep.add_argument("--out", required=True)
+    deep.add_argument("--config", required=True, help="Training config JSON")
+    deep.add_argument("--bootstrap", type=int, default=200)
+    deep.add_argument("--resume", action="store_true")
+    render = sub.add_parser("report", help="Generate measured report and case replay figures")
+    render.add_argument("--dataset", default="data/pilot_v1")
+    render.add_argument("--run", required=True)
+    render.add_argument("--out", required=True)
     args = parser.parse_args()
     if args.command == "fetch-pilot":
         result = {"downloaded_cases": len(fetch_pilot(args.root, args.cases, args.workers))}
     elif args.command == "build-pilot":
         result = build_pilot(args.root, args.out)
+    elif args.command == "build-sequences":
+        from .sequences import build_sequences
+        result = build_sequences(args.dataset, args.root, args.out)
+    elif args.command == "report":
+        from .reporting import build_report
+        result = build_report(args.dataset, args.run, args.out)
+    elif args.command == "train-sequence":
+        import os
+        from pathlib import Path
+        os.environ.setdefault("CUBLAS_WORKSPACE_CONFIG", ":4096:8")
+        from .training import TrainConfig, train_sequence
+        config = TrainConfig(**json.loads(Path(args.config).read_text(encoding="utf-8")))
+        report = train_sequence(args.dataset, args.sequences, args.out, config, args.bootstrap, args.resume)
+        result = {"scope": report["scope"], "models_completed": list(report["models"]), "errors": report["errors"]}
     else:
         report = run_pilot(args.dataset, args.out, args.models, args.bootstrap)
         result = {"scope": report["scope"], "models_completed": list(report["models"]), "errors": report["errors"]}

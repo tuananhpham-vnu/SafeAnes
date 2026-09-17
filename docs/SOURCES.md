@@ -1,0 +1,24 @@
+# Nguồn và cách sử dụng trong code UC04
+
+Ngày đối chiếu: 17/09/2026. Đây là sổ nguồn cho phiên bản 0.1; danh mục rộng hơn nằm trong [kế hoạch](../UC04_RESEARCH_PLAN.md). Nguồn là bài gốc hoặc tài liệu chính thức. Không gán hiệu năng của paper cho code này.
+
+| ID | Nguồn | Thông tin đã đối chiếu | Áp dụng / giới hạn |
+|---|---|---|---|
+| S01 | Lee HC, Park Y, Yoon SB, Yang SM, Park D, Jung CW. **VitalDB, a high-fidelity multi-parameter vital signs database in surgical patients.** Scientific Data 9, 279 (2022). [DOI](https://doi.org/10.1038/s41597-022-01411-5). [Bản dữ liệu](https://physionet.org/content/vitaldb/1.0.0/), DOI 10.13026/czw8-9p62. | Dữ liệu gốc còn artefact; subjectid nhận diện các lần mổ của một người. | `data.py`: chia theo bệnh nhân; `dataset.py`: báo cáo chất lượng. |
+| S02 | VitalDB, **Web API OpenDataset**. [API](https://vitaldb.net/docs/?documentId=API%2FWeb_API_OpenDataset.md), [parameter list](https://vitaldb.net/dataset/). | GET `/cases`, `/trks`, `/{tid}`; CSV gzip; thời gian giây từ casestart; dòng numeric thiếu bị bỏ; waveform có cách mã hóa thời gian khác. | `data.py`, `config.py`: giữ timestamp gốc và provenance; 7 numeric track; dùng ART_MBP, không thay bằng NIBP_MBP. |
+| S03 | Yang HL et al. **The effect of selection bias on the performance of a deep learning-based intraoperative hypotension prediction model using real-world samples from a publicly available database.** BJA (2025). [PubMed](https://pubmed.ncbi.nlm.nih.gov/40404499/), DOI 10.1016/j.bja.2025.03.024. | Abstract báo cáo hiệu năng giảm khi kiểm tra trên mẫu ít thiên lệch. | Giữ mọi cửa sổ đủ điều kiện và đánh giá cảnh báo liên tục. Đã đọc abstract; không tuyên bố tái lập toàn bộ Methods. |
+| S04 | Mulder MP et al. **Hypotension Prediction Index Is Equally Effective in Predicting Intraoperative Hypotension during Noncardiac Surgery Compared to a Mean Arterial Pressure Threshold: A Prospective Observational Study.** Anesthesiology (2024). [DOI](https://doi.org/10.1097/ALN.0000000000004990), [code tác giả](https://github.com/crph-utwente/HPIvalidation). | Cần so với baseline MAP đơn giản. | `experiment.py`: -MAP và logistic MAP/slope/variability; implementation riêng, không phải bản sao HPI. |
+| S05 | scikit-learn, **Probability calibration**. [User guide](https://scikit-learn.org/stable/modules/calibration.html). | Calibration cần dữ liệu độc lập với dữ liệu fit; reliability curve và Brier đo các khía cạnh khác nhau. | Sigmoid calibration trên bệnh nhân riêng; ECE/Brier; không random CV theo window. |
+| S06 | scikit-learn, **HistGradientBoostingClassifier**. [API](https://scikit-learn.org/stable/modules/generated/sklearn.ensemble.HistGradientBoostingClassifier.html). | Histogram gradient boosting hỗ trợ dữ liệu thiếu. | Baseline có sẵn local; tắt early stopping tự chia mẫu nội bộ. Không gọi mô hình này là LightGBM. |
+| S07 | LightGBM, **LGBMClassifier**. [API](https://lightgbm.readthedocs.io/en/stable/pythonapi/lightgbm.LGBMClassifier.html). | Tham số estimator, số cây, num_leaves, regularization. | Lựa chọn bổ sung khi cài optional dependency; báo rõ khi chưa cài. |
+| S08 | Zhu et al. **Transformer-based deep learning model for real-time prediction of intraoperative hypotension using dynamic time-series vital signs.** PLOS Medicine (2026). [Paper](https://journals.plos.org/plosmedicine/article?id=10.1371/journal.pmed.1005024). | Methods dùng MAP <65 kéo dài ≥1 phút và sinh hiệu dạng số. | Tham khảo endpoint; cách dựng nhãn/split code này là protocol riêng. |
+| S09 | Bai S, Kolter JZ, Koltun V. **An Empirical Evaluation of Generic Convolutional and Recurrent Networks for Sequence Modeling.** 2018. [arXiv](https://arxiv.org/abs/1803.01271). | Kiến trúc TCN cho chuỗi. | Nguồn cho mốc DL tiếp theo; release 0.1 chưa có kết quả GPU. |
+
+## Lựa chọn của dự án
+
+Các lựa chọn sau không được trình bày như chuẩn y khoa hay kết luận paper: gap label 10 giây; forward-fill input 30 giây; grid nhãn 1 giây; input 2 giây; history 600 giây; cadence 30 giây; recovery 120 giây; persistence 2 lần; cooldown 300 giây; 10 bin ECE; tỷ lệ chia tập và mục tiêu nghiệm thu. Xem [PROTOCOL.md](PROTOCOL.md).
+
+GET API lưu URL, thời điểm UTC, SHA-256, kích thước cho từng response tại `data/vitaldb/raw/*.source.json`. `fetch_report.json`, `dataset.json`, `environment.json` nối nguồn dữ liệu với kết quả. Các file dữ liệu bệnh nhân không được đưa vào Git.
+
+Firecrawl Research đã lỗi kết nối trong phiên tra cứu trước; phiên triển khai dùng công cụ web để đọc nguồn gốc và GET API công khai để xác minh schema thật. Không dùng snippet tìm kiếm để thay dữ liệu. Tài liệu nguồn có thể thay đổi; môi trường chạy được ghi riêng trong artifacts.
+

@@ -1,0 +1,49 @@
+{
+  "release": "0.2.0",
+  "experiment": "E05",
+  "cases": 300,
+  "roles_sha256": "aadde89c542f8bc8f22453a6ac466b6c11286d9f86a024875d267d9ae7a9d132",
+  "plan_sha256": "72e5123992342b71c85b6a36e52ce994c35ae4e5b42c30118c84bb28e6663517",
+  "role_counts": [
+    {
+      "role": "calibration",
+      "historical_subject": false,
+      "cases": 49
+    },
+    {
+      "role": "calibration",
+      "historical_subject": true,
+      "cases": 9
+    },
+    {
+      "role": "fit",
+      "historical_subject": false,
+      "cases": 136
+    },
+    {
+      "role": "fit",
+      "historical_subject": true,
+      "cases": 36
+    },
+    {
+      "role": "pilot_test",
+      "historical_subject": false,
+      "cases": 37
+    },
+    {
+      "role": "pilot_test",
+      "historical_subject": true,
+      "cases": 9
+    },
+    {
+      "role": "validation",
+      "historical_subject": false,
+      "cases": 18
+    },
+    {
+      "role": "validation",
+      "historical_subject": true,
+      "cases": 6
+    }
+  ]
+}

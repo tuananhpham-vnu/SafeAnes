@@ -3,7 +3,7 @@ __pycache__/
 *.egg-info/
 .venv/
 .local_deps/
-data/
+# data/
 artifacts/
 .ipynb_checkpoints/
 tests/

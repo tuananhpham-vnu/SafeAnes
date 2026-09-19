@@ -7,3 +7,5 @@ data/
 artifacts/
 .ipynb_checkpoints/
 tests/
+!tests/test_tabular_sota.py
+reports/

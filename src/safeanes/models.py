@@ -27,6 +27,7 @@ class NumericModel(nn.Module):
                  dropout=.1, patch=10, layers=2):
         super().__init__()
         self.architecture = architecture
+        output_width = width
         if architecture == "tcn":
             self.encoder = nn.Sequential(*[ResidualBlock(inputs if i == 0 else width, width, 2**i, dropout)
                                           for i in range(7)])
@@ -44,16 +45,25 @@ class NumericModel(nn.Module):
                 for p in layer.parameters():
                     if p.ndim > 1:
                         nn.init.xavier_uniform_(p)
+        elif architecture == "inception":
+            from .advanced_models import InceptionEncoder
+            self.encoder = InceptionEncoder(inputs, width)
+            output_width = width * 4
+        elif architecture == "timesnet":
+            from .advanced_models import TimesNetEncoder
+            self.encoder = TimesNetEncoder(inputs, width, length, layers, dropout)
         else:
-            raise ValueError("Expected tcn or transformer")
-        self.head = nn.Sequential(nn.Linear(width + static_dim, width), nn.ReLU(),
+            raise ValueError("Expected tcn, transformer, inception or timesnet")
+        self.head = nn.Sequential(nn.Linear(output_width + static_dim, width), nn.ReLU(),
                                   nn.Dropout(dropout), nn.Linear(width, 2))
 
     def forward(self, x, static):
         if self.architecture == "tcn":
             encoded = self.encoder(x)[:, :, -1]
-        else:
+        elif self.architecture == "transformer":
             encoded = self.encoder(self.patch(x).transpose(1, 2) + self.position).mean(dim=1)
+        else:
+            encoded = self.encoder(x)
         logits = self.head(torch.cat([encoded, static], dim=1)).float()
         # Ordered logits enforce p10 >= p5 without clipping gradients through p.
         return torch.stack([logits[:, 0], logits[:, 0] + F.softplus(logits[:, 1])], dim=1)

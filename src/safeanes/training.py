@@ -43,7 +43,7 @@ class TrainConfig:
     threads: int = 4
 
     def __post_init__(self):
-        if self.architecture not in ("tcn", "transformer"):
+        if self.architecture not in ("tcn", "transformer", "inception", "timesnet"):
             raise ValueError("Unknown architecture")
         if self.feature_set not in ("map", "numeric", "numeric_static"):
             raise ValueError("Unknown feature set")

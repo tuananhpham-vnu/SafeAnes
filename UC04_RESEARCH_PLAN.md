@@ -1,6 +1,8 @@
 # SafeAnes UC04 — Kế hoạch nghiên cứu và triển khai trên Kaggle T4 16 GB
 
-Ngày tra cứu/cập nhật: 17/09/2026. Phạm vi: dự báo sớm tụt huyết áp trong mổ, hiệu chỉnh xác suất, đánh giá cảnh báo và lộ trình nghiên cứu nguyên nhân. Phiên bản 0.2 đã triển khai pipeline numeric, baseline, TCN/Transformer, calibration, checkpoint/resume và báo cáo/phát lại ca. Thực nghiệm hiện dùng pilot VitalDB trên CPU; chưa có benchmark T4/Kaggle hoặc nghiệm thu hiệu năng. Xem [trạng thái và phần còn thiếu ở mục 13](#13-trạng-thái-bàn-giao-và-các-mốc-còn-thiếu).
+**Quy ước phát hành cập nhật:** toàn bộ công việc chưa push hiện tại được gộp vào **v0.2**; mỗi lần push mới tăng version. Các nhãn v0.3/v0.4 cũ tương ứng đợt thí nghiệm E03/E04, không phải release riêng. E04 đã chạy CatBoost ba seed và ablation ngưỡng; E05 tiếp tục mở rộng 300 ca theo [plan](docs/experiments/E05_PLAN.md). Xem [quy ước và kết quả từng đợt](README.md#release).
+
+Ngày tra cứu/cập nhật: 17/09/2026. Phạm vi: dự báo sớm tụt huyết áp trong mổ, hiệu chỉnh xác suất, đánh giá cảnh báo và lộ trình nghiên cứu nguyên nhân. Phiên bản 0.2 đã triển khai pipeline numeric, baseline, TCN/Transformer, calibration, checkpoint/resume và báo cáo/phát lại ca. Thực nghiệm hiện dùng pilot VitalDB trên CPU; chưa có benchmark T4/Kaggle hoặc nghiệm thu hiệu năng. Xem [trạng thái và phần còn thiếu ở mục 13](UC04_RESEARCH_PLAN.md#13-trạng-thái-bàn-giao-và-các-mốc-còn-thiếu).
 
 Tài liệu thực thi: [các bước triển khai](docs/IMPLEMENTATION_STEPS.md), [runbook và lệnh chạy](docs/SEQUENCE_RUNBOOK.md), [nguồn gắn với code](docs/SOURCES.md), [protocol](docs/PROTOCOL.md), [model card](docs/MODEL_CARD.md), [data card](docs/DATA_CARD.md). Kết quả đo: [baseline](reports/PILOT_BASELINE.md), [TCN](reports/tcn_v1/REPORT.md), [Transformer](reports/transformer_v1/REPORT.md); [biên bản kiểm thử và thực nghiệm](reports/IMPLEMENTATION_VALIDATION.md).
 
@@ -275,21 +277,86 @@ output: Vietnamese research and implementation plan
 
 ## 13. Trạng thái bàn giao và các mốc còn thiếu
 
+Cập nhật đợt **E03 trong v0.2**: Inception-style CNN, TimesNet và ensemble theo [review](docs/SOURCES.md#review-e03), [plan lưu trữ](docs/versions/V0_3_PLAN.md), [báo cáo](reports/v0_3/REPORT.md). **E04** đã chạy CatBoost ba seed và ablation ngưỡng, có cải thiện từng chỉ tiêu nhưng chưa đạt mọi gate: [kết quả](reports/v0_4/REPORT.md#nhan-xet). **E05** mở rộng development và ablation; các experiment không tự tạo release mới. Xem [quy ước version](README.md#release).
+
 Không đánh dấu toàn bộ nghiên cứu hoàn thành chỉ vì đã có code. Trạng thái dưới đây phân biệt sản phẩm đã triển khai với bằng chứng thực nghiệm còn cần bổ sung.
 
 | Hạng mục | Trạng thái | Bằng chứng / điều kiện còn thiếu |
 |---|---|---|
-| Pilot dữ liệu thật và provenance | Đã chạy 60 ca/60 bệnh nhân; 19.869 decision; 85 đợt IOH | Raw hashes, manifest, quality và báo cáo baseline. |
-| Cohort đúng phạm vi kế hoạch | Chưa xác nhận đầy đủ | Code lọc tuổi/gây mê/MAP/interval; cần audit tiêu chí không tim theo metadata như data card. |
+| Pilot dữ liệu thật và provenance | Pilot 60 ca; E05 đã chạy 300 ca/297 bệnh nhân, 99.132 decision, 497 episode IOH | Raw hashes, manifest, quality; [E05](reports/E05/REPORT.md). |
+| Cohort đúng phạm vi kế hoạch | Đã đối chiếu nguồn và metadata E05 | VitalDB gốc mô tả non-cardiac; kiểm kê chuyên khoa và cờ tên thủ thuật; chưa adjudication lại mã thủ thuật độc lập. |
 | Baseline MAP/logistic/boosting | Đã chạy CPU | Baseline hiện chưa đạt mọi mục tiêu mục 8. |
 | Dataset chuỗi và TCN/Transformer | Đã triển khai và chạy pilot CPU | Cùng nhãn, vai trò bệnh nhân và evaluator; chưa phải phép đo T4. |
 | Calibration, alarm và CI | Đã có trong pipeline | Calibration DL bảo toàn p10≥p5; CI bootstrap bệnh nhân; exposure còn xấp xỉ 30 giây. |
 | Notebook, checkpoint/resume và replay | Đã có code, kiểm thử và output local | Notebook Kaggle cần chạy thực trên tài khoản có T4 và lưu log môi trường. |
 | Độ chính xác yêu cầu | Chưa nghiệm thu | Đọc bảng metric/gates từng run; không dùng AUROC đơn lẻ để đánh dấu đạt. |
-| Ba seed, ablation và cohort lớn | Cấu hình/lệnh sẵn sàng, chưa chạy đủ ma trận | MAP-only/numeric/+static, mask/time-since; chọn bằng validation; báo mọi seed. |
-| Evaluator cho nghiên cứu xác nhận | Còn thiếu | Exposure từng giây, CI cho lead time/subgroup, audit nhãn/eligibility và luồng cảnh báo hợp nhất nếu có. |
+| Ba seed, ablation và cohort lớn | E04/E05 đã chạy CatBoost ba seed và E05 MAP-only/numeric/+static | 16 model theo horizon trên 300 ca; mask/time-since ablation sequence chưa chạy đủ. |
+| Evaluator cho nghiên cứu xác nhận | Đã bổ sung CI lead time/subgroup mô tả E05; còn thiếu phần xác nhận | Exposure từng giây chưa triển khai; cần audit nhãn/eligibility và luồng cảnh báo hợp nhất nếu có. |
 | Waveform | Chưa triển khai, có điều kiện | Cần bằng chứng validation và cohort giao để so lợi ích với chi phí. |
 | Final test, kiểm định ngoài, tiến cứu | Chưa chạy | Final test giữ chưa sử dụng; cần protocol khóa và dữ liệu/quyền truy cập phù hợp. |
 | Nhãn/cơ chế nguyên nhân | Chưa có bộ nhãn chuyên gia | Rubric và pilot gán nhãn như mục 9; không lấy attribution thay nhãn cơ chế. |
 
 Lệnh thực thi và cách nối các notebook được ghi tại [SEQUENCE_RUNBOOK.md](docs/SEQUENCE_RUNBOOK.md). Kết quả không đạt phải dẫn tới vòng development mới có ghi nhận cohort/config/seed; mục tiêu nghiên cứu và giới hạn lâm sàng của kế hoạch được giữ nguyên.
+
+<!-- consolidated:kiem-dinh -->
+<a id="kiem-dinh"></a>
+
+## Kế hoạch kiểm định còn phụ thuộc dữ liệu/môi trường ngoài — v0.2
+
+### Kaggle/T4
+
+Chạy các notebook hiện có trên T4 16 GB thực. Lưu GPU/driver/CUDA/PyTorch, config, source/data hashes, peak VRAM, epoch/inference time và artifact đầu ra. Đối chiếu CPU/AMP bằng sai số số học phù hợp; không thay benchmark T4 bằng thời gian CPU hay RTX3050. Hiện chưa có log T4 để nghiệm thu mốc này.
+
+### Final test VitalDB
+
+Chỉ mở sau khi quyết định pipeline/calibrator/threshold bằng development và khóa manifest, protocol, code/config. Nếu development chưa đạt mục tiêu, báo không đạt hoặc đăng ký vòng development mới; không mở final test để tìm cấu hình. Báo CI theo bệnh nhân, event denominator, coverage và FA/giờ; không chọn lại threshold từ kết quả test.
+
+### Kiểm định ngoài
+
+MOVER hoặc cohort bệnh viện cần quyền truy cập, ánh xạ track/unit/timestamp, tiêu chí cohort và kiểm tra nhãn riêng. Khóa rõ đánh giá zero-shot hay recalibration; nếu recalibration thì cần tập adaptation tách khỏi external test. Kiểm tra thiếu track/thiết bị/loại mổ và gộp lần mổ theo bệnh nhân. Không gọi chia ngẫu nhiên thêm VitalDB là external validation.
+
+### Tiến cứu chế độ im lặng
+
+Cần protocol được phê duyệt tại cơ sở, luồng dữ liệu thực, log thời gian trễ/mất dữ liệu và endpoint được kiểm tra độc lập. Ghi cảnh báo để đánh giá, không coi báo cáo hồi cứu hiện tại là bằng chứng hiệu quả can thiệp. Cỡ mẫu theo số biến cố và độ rộng CI mong muốn.
+
+### Nhánh cơ chế
+
+Dùng [bản nháp gán nhãn](UC04_RESEARCH_PLAN.md#gan-nhan); cần chuyên gia hoàn thiện rubric và dữ liệu thực. Không suy cơ chế hoặc thuốc/liều từ attention/SHAP.
+
+Các mốc trên được chuẩn bị về quy trình, chưa được đánh dấu đã thực nghiệm. Không có dữ liệu/quyền truy cập/log phần cứng tương ứng trong workspace để xác nhận hoàn thành.
+
+
+<!-- consolidated:gan-nhan -->
+<a id="gan-nhan"></a>
+
+## Bản nháp quy trình gán nhãn cơ chế — v0.2
+
+Tài liệu chuẩn bị cho nhánh B của kế hoạch UC04; **chưa có nhãn chuyên gia và chưa phải rubric được nhóm lâm sàng phê duyệt**. Không biến dự báo IOH, SHAP hoặc phản ứng với thuốc thành nhãn nguyên nhân.
+
+### Đơn vị và nội dung gán nhãn
+
+Một episode IOH theo protocol, có mã ca/mã episode và mốc onset. Hai bác sĩ xem cùng cửa sổ dữ liệu đã quy định trước, gán độc lập trước khi hội chẩn. Lưu rõ thông tin nào xảy ra trước onset, trong episode và sau can thiệp; nếu xây mô hình dự báo cơ chế, không để thông tin hậu nghiệm lọt vào input.
+
+Mỗi nhãn nhận một trong `supported`, `not_supported`, `insufficient_evidence`: giảm tiền tải/thiếu dịch; giãn mạch; giảm co bóp; mất máu. Cho phép nhiều nhãn đồng thời, hỗn hợp và không kết luận. Danh sách nhãn xuất phát từ mục 9 của kế hoạch, không phải chẩn đoán tự động dựa trên ngưỡng sinh hiệu.
+
+Mỗi quyết định phải dẫn tới mốc thời gian và loại bằng chứng: sinh hiệu, thuốc/dịch, mất máu/Hb, phẫu thuật, CO/SV/siêu âm khi có; ghi nguồn bị thiếu. Không coi “được truyền dịch” hay “được dùng vận mạch” là bằng chứng duy nhất xác nhận cơ chế.
+
+### Quy trình pilot 100–200 episode
+
+1. Khóa rubric cùng chuyên gia và thống nhất dữ liệu được xem; lưu revision, người phê duyệt, ngày hiệu lực.
+2. Chọn episode theo bệnh nhân, mô tả loại mổ/missingness; không chỉ chọn những ca mô hình dự báo đúng.
+3. Hai reviewer độc lập, không thấy dự báo hay attribution của mô hình và không thấy nhãn của nhau.
+4. Ghi agreement từng nhãn, tỉ lệ insufficient evidence và bất đồng; hội chẩn có lý do, giữ nguyên cả hai nhãn ban đầu.
+5. Báo prevalence, độ rộng CI theo bệnh nhân và quyết định tiếp tục/sửa rubric. 100–200 chỉ là pilot tính khả thi, không bảo đảm cỡ mẫu mô hình.
+6. Chỉ sau khi dữ liệu và agreement phù hợp mới định nghĩa task ML, chia bệnh nhân và khóa bộ kiểm định cơ chế riêng.
+
+### Schema đề xuất
+
+`caseid, subjectid, episode_id, onset_seconds, reviewer_id, rubric_revision, review_time, preload_label, vasodilation_label, contractility_label, bleeding_label, mixed_label, evidence_timestamps, evidence_sources, missing_sources, confidence_category, disagreement_reason, adjudicator_id, adjudicated_labels`
+
+Không điền dữ liệu mẫu vào kết quả thật. Nhãn confidence là tự đánh giá của reviewer, không phải xác suất đúng đã calibration. Mọi liên kết định danh và quyền truy cập phải theo quy trình quản trị dữ liệu của nghiên cứu.
+
+### Đầu vào còn cần
+
+Nhóm chuyên gia, timeline bằng chứng đủ tin cậy, quyền sử dụng dữ liệu và tập nhãn đã được kiểm tra. Các đầu vào này chưa có trong repository; không thể hoàn thành nhánh nguyên nhân chỉ bằng việc chạy model trên VitalDB numeric.
+

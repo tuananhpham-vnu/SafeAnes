@@ -39,6 +39,12 @@ def main():
     render.add_argument("--dataset", default="data/pilot_v1")
     render.add_argument("--run", required=True)
     render.add_argument("--out", required=True)
+    ensemble = sub.add_parser("ensemble", help="Fixed-weight ensemble of completed sequence checkpoints")
+    ensemble.add_argument("--dataset", default="data/pilot_v1")
+    ensemble.add_argument("--sequences", default="data/sequences_v1")
+    ensemble.add_argument("--runs", nargs="+", required=True)
+    ensemble.add_argument("--out", required=True)
+    ensemble.add_argument("--bootstrap", type=int, default=200)
     args = parser.parse_args()
     if args.command == "fetch-pilot":
         result = {"downloaded_cases": len(fetch_pilot(args.root, args.cases, args.workers))}
@@ -47,6 +53,10 @@ def main():
     elif args.command == "build-sequences":
         from .sequences import build_sequences
         result = build_sequences(args.dataset, args.root, args.out)
+    elif args.command == "ensemble":
+        from .ensemble import run_ensemble
+        report = run_ensemble(args.dataset, args.sequences, args.runs, args.out, repeats=args.bootstrap)
+        result = {"scope": report["scope"], "models_completed": list(report["models"]), "errors": report["errors"]}
     elif args.command == "report":
         from .reporting import build_report
         result = build_report(args.dataset, args.run, args.out)

@@ -2,6 +2,8 @@
 
 Phiên bản 0.2 bổ sung TCN, Transformer theo patch, calibration bảo toàn thứ tự horizon, checkpoint/resume và phát lại ca. Phạm vi thực thi là **pilot trong global train**. Mục tiêu hiệu năng tại mục 8 của kế hoạch vẫn giữ nguyên.
 
+Phiên bản 0.3 bổ sung Inception-style/TimesNet/ensemble; xem [VERSIONS.md](../README.md#release) để chạy toàn bộ vòng đã đăng ký. Các lệnh dưới đây vẫn dùng được cho mốc v0.2; không ghi đè artifacts của version cũ.
+
 ## 1. Môi trường và dữ liệu
 
 Python ≥3.11. Dùng môi trường riêng và cài:

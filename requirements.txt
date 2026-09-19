@@ -1,0 +1,31 @@
+# Mirrors pyproject.toml. Install core with `pip install -e .`, or use this
+# file for environments that need a flat requirements list (e.g. Kaggle).
+# Optional extras (boosting/catboost/deep/tabular/plots/dev) are listed below
+# and commented; uncomment what the run needs, or `pip install -e ".[tabular,dev]"`.
+
+numpy>=1.26,<3
+pandas>=2.1,<3
+scikit-learn>=1.4,<2
+joblib>=1.3,<2
+
+# --- optional: boosting ---
+# lightgbm>=4.3,<5
+
+# --- optional: catboost ---
+# catboost>=1.2.10,<2
+
+# --- optional: deep ---
+# torch>=2.6,<3
+# scipy>=1.11,<2
+
+# --- optional: tabular (TabM/E06) ---
+# torch>=2.6,<3
+# tabm==0.0.3
+# rtdl_num_embeddings==0.0.12
+# lightgbm>=4.3,<5
+
+# --- optional: plots ---
+# matplotlib>=3.8,<4
+
+# --- optional: dev ---
+# pytest>=8,<10

@@ -1,5 +1,7 @@
 # Data card — UC04 pilot VitalDB
 
+Release hiện tại **v0.2** gộp các đợt E03/E04/E05. E04 giữ pilot 60 ca để ablation CatBoost/ngưỡng; E05 đã dựng development **300 ca/297 bệnh nhân, 99.132 windows, 497 episode IOH**. Roles cũ được giữ nguyên; nhóm đánh giá mới có 37 bệnh nhân và 35/37 event đủ điều kiện ở 5/10 phút. Xem [plan E05](experiments/E05_PLAN.md), [data support](../reports/E05/data_support.json) và [quy ước release](../README.md#release).
+
 | Thuộc tính | Nội dung |
 |---|---|
 | Nguồn | VitalDB OpenDataset; nguồn bài báo/API tại S01/S02 trong [SOURCES.md](SOURCES.md). |
@@ -14,7 +16,7 @@
 | Thiếu dữ liệu | Input causal giữ NaN khi quá hạn; label `-1` nếu follow-up không xác định; giữ decision ineligible để replay reset đúng. |
 | Mục đích dùng | Nghiên cứu hồi cứu, không phải nguồn nhãn nguyên nhân đã adjudication. |
 
-Phạm vi đề xuất trong kế hoạch là phẫu thuật không tim. Bộ lọc hiện tại chưa có tiêu chí loại phẫu thuật tim độc lập theo chuyên khoa/mã thủ thuật; cần kiểm kê metadata và khóa ánh xạ cohort trước final benchmark. Không coi bộ lọc code đã thực hiện tất cả điều kiện mô tả trong kế hoạch.
+Phạm vi là phẫu thuật không tim. [Bài gốc VitalDB](https://www.nature.com/articles/s41597-022-01411-5) mô tả nguồn non-cardiac thuộc general/thoracic/urological/gynecological surgery. E05 đã kiểm kê đúng bốn nhóm này (190/87/7/16 ca), không có cờ tên tim theo regex sơ bộ; [metadata audit](../reports/E05/cohort_audit.csv). Bộ lọc code vẫn dựa trên tuổi/gây mê/MAP/interval, chưa có phân loại mã thủ thuật độc lập. Đây là đối chiếu nguồn và metadata, không phải adjudication lâm sàng lại toàn bộ ca.
 
 Quyền sử dụng/điều kiện phân phối phải đối chiếu bản dữ liệu gốc trước chia sẻ. Repository không chứa raw dữ liệu bệnh nhân hoặc checkpoint trong Git. Các hình replay dẫn xuất chỉ dùng mã ca của dữ liệu công khai; không thêm định danh bệnh viện khác. MOVER và dữ liệu bệnh viện chưa có trong pipeline này.
 

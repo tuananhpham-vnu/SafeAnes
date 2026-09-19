@@ -4,8 +4,8 @@
 > 19/09/2026 tìm được 6 lỗi làm sai lệch số liệu (train/serve skew, trộn thang xác suất, gate tính
 > trên vote fraction, so sánh bị nhiễu preprocessing, chọn ngưỡng trên chính tập báo cáo, augmentation
 > thêm lượng mẫu không đều) — xem [lịch sử version](../../scripts/e08/README.md). Kết quả hiện hành:
-> [bảng tham số và kết quả trong README](../../README.md#e08--so-sánh-phương-pháp-v2-bản-đang-dùng) ·
-> [báo cáo v2](../../reports/E08/V2_METHOD_COMPARISON.md). Nội dung dưới đây và
+> [bảng tham số và kết quả trong README](../../README.md#e08) ·
+> [báo cáo hiện hành](../../reports/E08/METHOD_COMPARISON.md). Nội dung dưới đây và
 > [báo cáo v1](../../reports/E08/version/v1/REPORT.md) giữ lại để truy vết, **không dùng để ra quyết định**.
 
 Nháp lập kế hoạch ngày 19/09/2026. Thay cho

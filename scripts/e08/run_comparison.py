@@ -1,38 +1,60 @@
-"""E08 v2: compare every method on one pipeline; writes reports/E08/ and the README section.
+"""E08: compare every method on one pipeline; writes reports/E08/ and the README section.
 
-`--render-only` rebuilds the report and README from the saved CSVs without retraining.
+  --dataset development300|full   v2 = development300, v3 = full VitalDB except the locked global test
+  --tabm frozen|retrain|skip      reuse the E06 backbone, retrain it on FIT, or leave TabM out
+  --render-only                   rebuild the report and README from saved outputs, no training
+A rerun resumes from artifacts/E08/cache/ as long as the method and evaluation code are unchanged.
 """
+import argparse
+import hashlib
+import inspect
 import json
 from pathlib import Path
-import sys
+import shutil
 import time
 
+import joblib
 import numpy as np
 import pandas as pd
 
+from safeanes import e08_methods, evaluation, tabular_sota
 from safeanes.e08_methods import (AUGMENT_COPIES, AUGMENT_SEED, CALIBRATOR_PARAMS, CATBOOST_PARAMS,
-                                  ENSEMBLE_MEMBERS, ENSEMBLE_NAME, HORIZONS, JITTER_SCALE,
+                                  DATASETS, ENSEMBLE_MEMBERS, ENSEMBLE_NAME, HORIZONS, JITTER_SCALE,
                                   LIGHTGBM_PARAMS, LOGISTIC_PARAMS, MAP_FEATURES, METHODS, MODEL_SEED,
                                   MONOTONE_FEATURES, SMOTE_NEIGHBOURS, TABM_EXPECTED, TABM_FIXED,
-                                  calibrate_member, fit_predict, frame_with_probability, load_context,
-                                  pareto_front, select_threshold, sweep, threshold_grid)
+                                  TABM_MODES, calibrate_member, fit_predict, frame_with_probability,
+                                  load_context, pareto_front, select_threshold, sweep, threshold_grid)
 from safeanes.evaluation import bootstrap_ci, evaluate_predictions, quality_gates
 
 ROOT = Path(__file__).resolve().parents[2]
 OUT = ROOT / "reports/E08"
+CACHE = ROOT / "artifacts/E08/cache"
 README = ROOT / "README.md"
 README_BEGIN, README_END = "<!-- e08:begin -->", "<!-- e08:end -->"
 POLICIES = ("recall_first", "fa_budget")
 BOOTSTRAP = 200
+VERSION = {"development300": "v2", "full": "v3"}
+OUTPUTS = ("method_comparison.csv", "calibration_audit.csv", "parameters.csv", "pareto_frontier.csv",
+           "run.json", "METHOD_COMPARISON.md")
 FAMILY = {"baseline": "baseline", "lightgbm": "LightGBM", "catboost": "CatBoost", "tabm": "TabM",
           "ensemble": "ensemble"}
+DATASET_TITLE = {"development300": "development300", "full": "toàn bộ VitalDB (trừ global test)"}
+DATASET_TEXT = {
+    "development300": "development300 (300 ca của E05), chia theo `subjectid`",
+    "full": "toàn bộ VitalDB đủ điều kiện, theo nhóm bệnh nhân của E07: FIT = `development_seen` + "
+            "`unseen_train`, CALIBRATION = `unseen_calibration`, VALIDATION = `unseen_validation`; "
+            "global test `unseen_test` không được đọc",
+}
+TABM_TEXT = {"frozen": "backbone đông lạnh từ E06 (train trên development300), chỉ calibrate lại",
+             "retrain": "train lại trên FIT của lần chạy này", "skip": "không chạy"}
 
+
+# --- compute -------------------------------------------------------------------------------
 
 def evaluate(ctx, name, family, p_cal, p_val, horizon):
     cal_frame = frame_with_probability(ctx.cal_rows, p_cal)
     val_frame = frame_with_probability(ctx.val_rows, p_val)
-    grid = threshold_grid(cal_frame.probability.to_numpy())
-    cal_curve = sweep(cal_frame, ctx.events, horizon, ctx.protocol, grid)
+    cal_curve = sweep(cal_frame, ctx.events, horizon, ctx.protocol, threshold_grid(cal_frame.probability.to_numpy()))
     rows = []
     for policy in POLICIES:
         chosen, resolved = select_threshold(cal_curve, policy)
@@ -56,71 +78,118 @@ def evaluate(ctx, name, family, p_cal, p_val, horizon):
                         for side in ("low", "high")}})
         print(f"  {name:26s} h={horizon} {policy:12s} recall={m['event_sensitivity']:.3f} "
               f"ppv={m['alarm_ppv'] or float('nan'):.3f} fa={m['false_alarms_per_hour']:.3f}", flush=True)
-    return rows, (val_frame, grid)
+    return rows
 
 
-def compute():
+def fingerprint(dataset, tabm):
+    """Cached results are reused only if the code that produced them is unchanged."""
+    parts = [Path(module.__file__).read_bytes() for module in (e08_methods, evaluation, tabular_sota)]
+    parts += [inspect.getsource(evaluate).encode(), repr((BOOTSTRAP, POLICIES, dataset, tabm)).encode()]
+    return hashlib.sha256(b"\0".join(parts)).hexdigest()
+
+
+def cached(path, key, produce):
+    if path.exists():
+        stored = joblib.load(path)
+        if stored.get("fingerprint") == key:
+            print(f"  resume {path.name}", flush=True)
+            return stored
+    result = produce()
+    path.parent.mkdir(parents=True, exist_ok=True)
+    joblib.dump({**result, "fingerprint": key}, path)
+    return result
+
+
+def run_method(ctx, spec, horizon, tabm, mask, y_cal, cache):
+    raw_cal, raw_val, used = fit_predict(ctx, spec, horizon, tabm, cache / "tabm_models")
+    p_cal, p_val = calibrate_member(raw_cal, raw_val, y_cal, mask)
+    return {"rows": evaluate(ctx, spec.name, spec.family, p_cal, p_val, horizon),
+            "audit": {"method": spec.name, "horizon": horizon, "raw_mean": raw_cal[mask].mean(),
+                      "calibrated_mean": p_cal[mask].mean(), "prevalence": y_cal.mean()},
+            "params": {"method": spec.name, "horizon": horizon, **used}, "p_cal": p_cal, "p_val": p_val}
+
+
+def split_summary(ctx):
+    out = {}
+    for key, rows in (("FIT", ctx.fit_rows), ("CALIBRATION", ctx.cal_rows), ("VALIDATION", ctx.val_rows)):
+        events = ctx.events[ctx.events.caseid.isin(rows.caseid.unique())]
+        out[key] = [int(rows.caseid.nunique()), int(rows.subjectid.nunique()),
+                    *(int(events[f"eligible_{h}"].astype(bool).sum()) for h in HORIZONS)]
+    return out
+
+
+def compute(dataset, tabm):
     started = time.perf_counter()
-    ctx = load_context(ROOT)
-    OUT.mkdir(parents=True, exist_ok=True)
-    rows, audits, params, frames = [], [], [], {}
+    ctx = load_context(ROOT, dataset)
+    methods = [s for s in METHODS if not (s.family == "tabm" and tabm == "skip")]
+    members = [m for m in ENSEMBLE_MEMBERS if m in {s.name for s in methods}]
+    cache, key = CACHE / f"{dataset}_tabm-{tabm}", fingerprint(dataset, tabm)
+    rows, audits, params, probabilities = [], [], [], {}
 
     for horizon in HORIZONS:
         mask = ctx.calibration_mask(horizon)
         y_cal = ctx.cal_rows.loc[mask, f"y_{horizon}"].astype(int).to_numpy()
-        print(f"--- horizon {horizon}: calibration prevalence {y_cal.mean():.4f} ---", flush=True)
-        calibrated = {}
-        for spec in METHODS:
-            raw_cal, raw_val, used = fit_predict(ctx, spec, horizon)
-            p_cal, p_val = calibrate_member(raw_cal, raw_val, y_cal, mask)
-            calibrated[spec.name] = (p_cal, p_val)
-            params.append({"method": spec.name, "horizon": horizon, **used})
-            audits.append({"method": spec.name, "horizon": horizon, "raw_mean": raw_cal[mask].mean(),
-                           "calibrated_mean": p_cal[mask].mean(), "prevalence": y_cal.mean()})
-            new_rows, frames[spec.name, horizon] = evaluate(ctx, spec.name, spec.family, p_cal, p_val, horizon)
-            rows += new_rows
-        p_cal = np.mean([calibrated[m][0] for m in ENSEMBLE_MEMBERS], axis=0)
-        p_val = np.mean([calibrated[m][1] for m in ENSEMBLE_MEMBERS], axis=0)
+        print(f"--- {dataset} horizon {horizon}: calibration prevalence {y_cal.mean():.4f} ---", flush=True)
+        for spec in methods:
+            result = cached(cache / f"{spec.name}_{horizon}.joblib", key,
+                            lambda: run_method(ctx, spec, horizon, tabm, mask, y_cal, cache))
+            rows += result["rows"]
+            audits.append(result["audit"])
+            params.append(result["params"])
+            probabilities[spec.name, horizon] = result["p_cal"], result["p_val"]
+        p_cal = np.mean([probabilities[m, horizon][0] for m in members], axis=0)
+        p_val = np.mean([probabilities[m, horizon][1] for m in members], axis=0)
+        probabilities[ENSEMBLE_NAME, horizon] = p_cal, p_val
         audits.append({"method": ENSEMBLE_NAME, "horizon": horizon, "raw_mean": p_cal[mask].mean(),
                        "calibrated_mean": p_cal[mask].mean(), "prevalence": y_cal.mean()})
-        new_rows, frames[ENSEMBLE_NAME, horizon] = evaluate(ctx, ENSEMBLE_NAME, "ensemble", p_cal, p_val, horizon)
-        rows += new_rows
+        rows += evaluate(ctx, ENSEMBLE_NAME, "ensemble", p_cal, p_val, horizon)
 
-    comparison, audit, used = pd.DataFrame(rows), pd.DataFrame(audits), pd.DataFrame(params)
-    winners = pick_winners(comparison)
+    comparison = pd.DataFrame(rows)
     frontier = []
-    for horizon, name in winners.items():
-        val_frame, grid = frames[name, horizon]
-        front = pareto_front(sweep(val_frame, ctx.events, horizon, ctx.protocol, grid))
-        frontier.append(front.assign(method=name, horizon=horizon))
-    frontier = pd.concat(frontier, ignore_index=True)
+    for horizon, name in pick_winners(comparison).items():
+        p_cal, p_val = probabilities[name, horizon]
+        grid = threshold_grid(frame_with_probability(ctx.cal_rows, p_cal).probability.to_numpy())
+        curve = sweep(frame_with_probability(ctx.val_rows, p_val), ctx.events, horizon, ctx.protocol, grid)
+        frontier.append(pareto_front(curve).assign(method=name, horizon=horizon))
 
-    comparison.to_csv(OUT / "v2_method_comparison.csv", index=False)
-    audit.to_csv(OUT / "v2_calibration_audit.csv", index=False)
-    used.to_csv(OUT / "v2_parameters.csv", index=False)
-    frontier.to_csv(OUT / "v2_pareto_frontier.csv", index=False)
-    seconds = time.perf_counter() - started
-    (OUT / "v2_run.json").write_text(json.dumps({"seconds": round(seconds)}), encoding="utf-8")
-    print(f"computed in {seconds:.0f}s", flush=True)
-
-
-def render():
-    ctx = load_context(ROOT)
-    comparison = pd.read_csv(OUT / "v2_method_comparison.csv")
-    used = pd.read_csv(OUT / "v2_parameters.csv")
-    winners = pick_winners(comparison)
-    shared = shared_sections(ctx, comparison, used, winners)
-    write_report(shared, comparison, pd.read_csv(OUT / "v2_calibration_audit.csv"),
-                 pd.read_csv(OUT / "v2_pareto_frontier.csv"), winners,
-                 json.loads((OUT / "v2_run.json").read_text(encoding="utf-8"))["seconds"])
-    write_readme(shared)
-    print("rendered README.md and V2_METHOD_COMPARISON.md", flush=True)
+    p = ctx.protocol
+    info = {"version": VERSION[dataset], "dataset": dataset, "tabm": tabm,
+            "seconds": round(time.perf_counter() - started), "ensemble_members": members,
+            "n_features": len(ctx.features), "splits": split_summary(ctx),
+            "protocol": {"map_threshold": p.map_threshold, "event_seconds": p.event_seconds,
+                         "alarm_persistence": p.alarm_persistence,
+                         "alarm_cooldown_seconds": p.alarm_cooldown_seconds,
+                         "cadence_seconds": p.cadence_seconds}}
+    archive_previous(info)
+    OUT.mkdir(parents=True, exist_ok=True)
+    comparison.to_csv(OUT / "method_comparison.csv", index=False)
+    pd.DataFrame(audits).to_csv(OUT / "calibration_audit.csv", index=False)
+    pd.DataFrame(params).to_csv(OUT / "parameters.csv", index=False)
+    pd.concat(frontier, ignore_index=True).to_csv(OUT / "pareto_frontier.csv", index=False)
+    (OUT / "run.json").write_text(json.dumps(info, indent=1), encoding="utf-8")
+    print(f"computed in {info['seconds']}s", flush=True)
 
 
-def main():
-    if "--render-only" not in sys.argv:
-        compute()
-    render()
+def archive_previous(info):
+    """The newest run owns reports/E08/; a run of another version moves to reports/E08/version/."""
+    current = OUT / "run.json"
+    if not current.exists():
+        return
+    old = json.loads(current.read_text(encoding="utf-8"))
+    if (old["version"], old["dataset"], old["tabm"]) == (info["version"], info["dataset"], info["tabm"]):
+        return
+    target = OUT / "version" / f"{old['version']}_{old['dataset']}_tabm-{old['tabm']}"
+    target.mkdir(parents=True, exist_ok=True)
+    for name in OUTPUTS:
+        if (OUT / name).exists():
+            shutil.move(str(OUT / name), str(target / name))
+    report = target / "METHOD_COMPARISON.md"
+    if report.exists():
+        text = report.read_text(encoding="utf-8").replace("](../../", "](../../../../")
+        report.write_text(f"> **Bản {old['version']} — đã thay thế** bởi "
+                          f"[{info['version']}](../../METHOD_COMPARISON.md). Giữ lại để truy vết.\n\n" + text,
+                          encoding="utf-8")
+    print(f"archived {old['version']} outputs -> {target.relative_to(ROOT).as_posix()}", flush=True)
 
 
 def pick_winners(comparison):
@@ -142,39 +211,30 @@ def code(params):
                            for k, v in params.items()) + "`"
 
 
-def split_summary(ctx):
-    out = {}
-    for key, rows in (("FIT", ctx.fit_rows), ("CALIBRATION", ctx.cal_rows), ("VALIDATION", ctx.val_rows)):
-        cases = rows.caseid.unique()
-        events = ctx.events[ctx.events.caseid.isin(cases)]
-        out[key] = (len(cases), *(int(events[f"eligible_{h}"].astype(bool).sum()) for h in HORIZONS))
-    return out
-
-
-def pipeline_table(ctx):
-    p, split = ctx.protocol, split_summary(ctx)
+def pipeline_table(info):
+    p, splits = info["protocol"], info["splits"]
     return ["| Tham số | Giá trị |", "|---|---|",
-        "| Dữ liệu | development300, chia theo `subjectid`: "
-        + " · ".join(f"{k} {v[0]} ca" for k, v in split.items()) + " |",
-        "| Biến cố eligible (5 / 10 phút) | "
-        + " · ".join(f"{k} {v[1]}/{v[2]}" for k, v in split.items()) + " |",
-        f"| Định nghĩa biến cố | MAP < {p.map_threshold:g} mmHg liên tục ≥ {p.event_seconds} s |",
-        f"| Đặc trưng | {len(ctx.features)} numeric (bỏ static); `map_logistic` chỉ dùng "
+        f"| Dữ liệu | {DATASET_TEXT[info['dataset']]} |",
+        "| Ca / bệnh nhân | " + " · ".join(f"{k} {v[0]} ca / {v[1]} BN" for k, v in splits.items()) + " |",
+        "| Biến cố eligible (5 / 10 phút) | " + " · ".join(f"{k} {v[2]}/{v[3]}" for k, v in splits.items()) + " |",
+        f"| Định nghĩa biến cố | MAP < {p['map_threshold']:g} mmHg liên tục ≥ {p['event_seconds']} s |",
+        f"| Đặc trưng | {info['n_features']} numeric (bỏ static); `map_logistic` chỉ dùng "
         + ", ".join(f"`{f}`" for f in MAP_FEATURES) + " |",
-        "| Imputation | median, fit trên FIT, áp dụng y hệt cho FIT / CALIBRATION / VALIDATION |",
+        "| Imputation | median từng cột, tính trên FIT, điền y hệt cho FIT / CALIBRATION / VALIDATION |",
         f"| Calibration | StandardScaler → LogisticRegression {code(CALIBRATOR_PARAMS)} trên log-odds của "
         "điểm thô; fit trên CALIBRATION, riêng từng phương pháp × horizon |",
+        f"| TabM | {TABM_TEXT[info['tabm']]} |",
         "| Lưới ngưỡng | 40 điểm cố định 0,01–0,99 + 201 quantile xác suất trên CALIBRATION |",
         "| Chọn ngưỡng | `recall_first` trên CALIBRATION: recall cao nhất → PPV cao hơn → FA/giờ thấp hơn |",
         "| Chọn phương pháp | trên CALIBRATION, cùng thứ tự `recall_first` |",
         "| Báo cáo | VALIDATION — không tham gia chọn ngưỡng hay chọn phương pháp |",
-        f"| Chính sách cảnh báo | {p.alarm_persistence} decision liên tiếp vượt ngưỡng · cooldown "
-        f"{p.alarm_cooldown_seconds} s · nhịp {p.cadence_seconds} s |",
+        f"| Chính sách cảnh báo | {p['alarm_persistence']} decision liên tiếp vượt ngưỡng · cooldown "
+        f"{p['alarm_cooldown_seconds']} s · nhịp {p['cadence_seconds']} s |",
         f"| Khoảng tin cậy | bootstrap theo `subjectid`, {BOOTSTRAP} lần |",
         f"| Seed | model {MODEL_SEED} · augmentation {AUGMENT_SEED} |"]
 
 
-def params_table(ctx, used):
+def params_table(info, used):
     def value(name, horizon, key):
         row = used[used.method.eq(name) & used.horizon.eq(horizon)]
         return None if row.empty or key not in row or pd.isna(row.iloc[0][key]) else row.iloc[0][key]
@@ -182,7 +242,7 @@ def params_table(ctx, used):
     monotone = ", ".join(f"`{f}`" for f in MONOTONE_FEATURES)
     lines = ["| Phương pháp | Nhóm | Đặc trưng | Siêu tham số | Cân bằng lớp | Augmentation | "
              "Window dương khi train (5 / 10 phút) |", "|---|---|---|---|---|---|---|"]
-    for spec in METHODS:
+    for spec in (s for s in METHODS if s.name in set(used.method)):
         if spec.family == "baseline":
             hyper = f"StandardScaler → LogisticRegression {code(LOGISTIC_PARAMS)}"
         elif spec.family == "lightgbm":
@@ -191,8 +251,7 @@ def params_table(ctx, used):
             hyper = code(CATBOOST_PARAMS)
         else:
             hyper = (f"{code(TABM_EXPECTED)}; `{TABM_FIXED}`; dừng ở epoch "
-                     f"{value(spec.name, HORIZONS[0], 'best_epoch'):.0f} (backbone đông lạnh từ E06)")
-
+                     f"{value(spec.name, HORIZONS[0], 'best_epoch'):.0f} ({TABM_TEXT[info['tabm']]})")
         if spec.weighting == "scale_pos_20x":
             weights = " / ".join(f"{value(spec.name, h, 'scale_pos_weight'):.0f}" for h in HORIZONS)
             weighting = f"`scale_pos_weight` = 20 × âm/dương = {weights}"
@@ -201,22 +260,19 @@ def params_table(ctx, used):
                          else "`auto_class_weights='Balanced'`")
         else:
             weighting = "không"
-
         augmentation = {
             "none": "không",
             "oversample": f"nhân bản nguyên văn, +{AUGMENT_COPIES} bản / window dương",
             "smote": f"SMOTE {SMOTE_NEIGHBOURS} láng giềng, +{AUGMENT_COPIES} mẫu / window dương",
             "jitter": f"nhiễu Gaussian σ = {JITTER_SCALE:g} × std, +{AUGMENT_COPIES} bản / window dương",
         }[spec.augmentation]
-
         positives = [value(spec.name, h, "n_positive") for h in HORIZONS]
-        positives = ("— (train ở E06)" if positives[0] is None
-                     else " / ".join(str(int(v)) for v in positives))
-        features = f"{len(MAP_FEATURES)} (MAP)" if spec.family == "baseline" else f"{len(ctx.features)}"
+        positives = "—" if positives[0] is None else " / ".join(str(int(v)) for v in positives)
+        features = f"{len(MAP_FEATURES)} (MAP)" if spec.family == "baseline" else str(info["n_features"])
         lines.append(f"| `{spec.name}` | {FAMILY[spec.family]} | {features} | {hyper} | {weighting} | "
                      f"{augmentation} | {positives} |")
     lines.append(f"| `{ENSEMBLE_NAME}` | ensemble | — | trung bình xác suất đã calibrate của "
-                 + ", ".join(f"`{m}`" for m in ENSEMBLE_MEMBERS) + " | — | — | — |")
+                 + ", ".join(f"`{m}`" for m in info["ensemble_members"]) + " | — | — | — |")
     return lines
 
 
@@ -235,9 +291,9 @@ def results_table(comparison, horizon, winner):
     return lines
 
 
-def winner_lines(ctx, comparison, winners):
+def winner_lines(info, comparison, winners):
     first = comparison[comparison.policy.eq("recall_first")]
-    cal_events = dict(zip(HORIZONS, split_summary(ctx)["CALIBRATION"][1:]))
+    cal_events = dict(zip(HORIZONS, info["splits"]["CALIBRATION"][2:]))
     lines, consistent = [], []
     for horizon, name in winners.items():
         sub = first[first.horizon.eq(horizon)]
@@ -272,76 +328,91 @@ def winner_lines(ctx, comparison, winners):
     return lines
 
 
-def shared_sections(ctx, comparison, used, winners):
-    totals = {h: int(comparison[comparison.horizon.eq(h)].events_eligible.iloc[0]) for h in HORIZONS}
-    sections = {"winners": winner_lines(ctx, comparison, winners), "pipeline": pipeline_table(ctx),
-                "params": params_table(ctx, used)}
+def body(info, comparison, used, winners):
+    totals = dict(zip(HORIZONS, info["splits"]["VALIDATION"][2:]))
+    lines = ["### Phương pháp được chọn", "", *winner_lines(info, comparison, winners), "",
+             "### Tham số chung (áp dụng cho mọi phương pháp)", "", *pipeline_table(info), "",
+             "### Tham số từng phương pháp", "", *params_table(info, used), ""]
     for horizon in HORIZONS:
-        sections[f"results_{horizon}"] = results_table(comparison, horizon, winners[horizon])
-        sections[f"total_{horizon}"] = totals[horizon]
-    return sections
+        lines += [f"### Kết quả {horizon // 60} phút — `recall_first`, VALIDATION ({totals[horizon]} biến cố)",
+                  "", *results_table(comparison, horizon, winners[horizon]), ""]
+    step = sorted(100 / v for v in totals.values())
+    untouched = ("chưa mở pilot_test/global test" if info["dataset"] == "development300"
+                 else "global test `unseen_test` không được đọc")
+    return lines + ["**Đọc bảng:**", "",
+        "- ★ = phương pháp chọn trên CALIBRATION; VALIDATION chỉ để báo cáo.",
+        f"- Mỗi biến cố trên VALIDATION = {step[0]:.1f}–{step[-1]:.1f} điểm recall; chênh lệch nằm gọn trong "
+        "CI95 **không** đủ kết luận phương pháp nào hơn.",
+        "- AUROC / AP / ECE không phụ thuộc ngưỡng — dùng để so khả năng phân biệt tách khỏi điểm vận hành.",
+        f"- Development validation, **không phải** bằng chứng xác nhận độc lập; {untouched}."]
 
 
-NOTES = ["- ★ = phương pháp chọn trên CALIBRATION; VALIDATION chỉ để báo cáo.",
-         "- Mỗi biến cố trên VALIDATION = 4,2–4,3 điểm recall, CI95 rất rộng: chênh lệch dưới ~1 biến cố "
-         "**không** đủ kết luận phương pháp nào hơn.",
-         "- AUROC / AP / ECE không phụ thuộc ngưỡng — dùng để so khả năng phân biệt tách khỏi điểm vận hành.",
-         "- Development validation, **không phải** bằng chứng xác nhận độc lập; chưa mở pilot_test/global test."]
-
-
-def body(shared):
-    lines = ["### Phương pháp được chọn", "", *shared["winners"], "",
-             "### Tham số chung (áp dụng cho mọi phương pháp)", "", *shared["pipeline"], "",
-             "### Tham số từng phương pháp", "", *shared["params"], ""]
-    for horizon in HORIZONS:
-        lines += [f"### Kết quả {horizon // 60} phút — `recall_first`, VALIDATION "
-                  f"({shared[f'total_{horizon}']} biến cố)", "", *shared[f"results_{horizon}"], ""]
-    return lines + ["**Đọc bảng:**", "", *NOTES]
-
-
-def write_readme(shared):
-    block = ["## E08 — so sánh phương pháp (v2, bản đang dùng)", "",
+def write_readme(info, lines):
+    block = ['<a id="e08"></a>', "",
+             f"## E08 {info['version']} — so sánh phương pháp trên {DATASET_TITLE[info['dataset']]}", "",
              "Mọi phương pháp đi qua đúng một quy trình, chỉ khác nhau ở bản thân phương pháp; FA/giờ đi "
              "kèm chính sách `recall_first` đã được chấp nhận. Sinh tự động bởi "
              "[`scripts/e08/run_comparison.py`](scripts/e08/run_comparison.py) từ chính các tham số đã chạy. "
-             "[Báo cáo đầy đủ](reports/E08/V2_METHOD_COMPARISON.md) · "
-             "[lịch sử version và 6 lỗi của v1](scripts/e08/README.md)", "", *body(shared)]
+             "[Báo cáo đầy đủ](reports/E08/METHOD_COMPARISON.md) · "
+             "[các version và lỗi đã sửa](scripts/e08/README.md)", "", *lines]
     text = README.read_text(encoding="utf-8")
     start, end = text.index(README_BEGIN) + len(README_BEGIN), text.index(README_END)
     README.write_text(text[:start] + "\n" + "\n".join(block) + "\n" + text[end:], encoding="utf-8")
 
 
-def write_report(shared, comparison, audit, frontier, winners, seconds):
-    lines = ["# E08 v2 — so sánh phương pháp", "",
-             f"Chạy {seconds:.0f} giây. [Tóm tắt trong README](../../README.md) · "
-             "[lịch sử version](../../scripts/e08/README.md) · "
-             "[script](../../scripts/e08/run_comparison.py)", "", *body(shared), "",
-             "## Cái giá của ràng buộc FA/giờ ≤ 0,5 (`fa_budget`, cùng model)", "",
-             "| Phương pháp | Phút | Recall `recall_first` | Recall `fa_budget` | Δ recall | PPV `fa_budget` | FA/giờ `fa_budget` |",
-             "|---|---:|---:|---:|---:|---:|---:|"]
+def write_report(info, lines, comparison, audit, frontier):
+    out = [f"# E08 {info['version']} — so sánh phương pháp trên {DATASET_TITLE[info['dataset']]}", "",
+           f"Chạy {info['seconds']} giây · TabM: {TABM_TEXT[info['tabm']]}. "
+           "[Tóm tắt trong README](../../README.md#e08) · [các version](../../scripts/e08/README.md) · "
+           "[script](../../scripts/e08/run_comparison.py)", "", *lines, "",
+           "## Cái giá của ràng buộc FA/giờ ≤ 0,5 (`fa_budget`, cùng model)", "",
+           "| Phương pháp | Phút | Recall `recall_first` | Recall `fa_budget` | Δ recall | PPV `fa_budget` | FA/giờ `fa_budget` |",
+           "|---|---:|---:|---:|---:|---:|---:|"]
     first = comparison[comparison.policy.eq("recall_first")]
     budget = comparison[comparison.policy.eq("fa_budget")]
     merged = first.merge(budget, on=["method", "horizon"], suffixes=("_first", "_budget"))
     for r in merged.sort_values(["horizon", "recall_first"], ascending=[True, False]).itertuples():
-        lines.append(f"| `{r.method}` | {r.horizon // 60} | {fmt(r.recall_first)} | {fmt(r.recall_budget)} | "
-                     f"{(r.recall_budget or 0) - (r.recall_first or 0):+.3f} | {fmt(r.ppv_budget)} | "
-                     f"{fmt(r.fa_per_hour_budget)} |")
-    lines += ["", "## Mặt Pareto của phương pháp được chọn (VALIDATION)", "",
-              "Các điểm không bị điểm nào trội hơn đồng thời về recall, PPV và FA/giờ — chọn điểm nào là "
-              "quyết định lâm sàng, không phải kỹ thuật.", "",
-              "| Phút | Phương pháp | Ngưỡng | Recall | Bắt được | PPV | FA/giờ |", "|---:|---|---:|---:|---:|---:|---:|"]
+        out.append(f"| `{r.method}` | {r.horizon // 60} | {fmt(r.recall_first)} | {fmt(r.recall_budget)} | "
+                   f"{(r.recall_budget or 0) - (r.recall_first or 0):+.3f} | {fmt(r.ppv_budget)} | "
+                   f"{fmt(r.fa_per_hour_budget)} |")
+    out += ["", "## Mặt Pareto của phương pháp được chọn (VALIDATION)", "",
+            "Các điểm không bị điểm nào trội hơn đồng thời về recall, PPV và FA/giờ — chọn điểm nào là "
+            "quyết định lâm sàng, không phải kỹ thuật.", "",
+            "| Phút | Phương pháp | Ngưỡng | Recall | Bắt được | PPV | FA/giờ |", "|---:|---|---:|---:|---:|---:|---:|"]
     for r in frontier.drop_duplicates(["horizon", "event_sensitivity"]).itertuples():
-        lines.append(f"| {r.horizon // 60} | `{r.method}` | {fmt(r.threshold)} | {fmt(r.event_sensitivity)} | "
-                     f"{int(r.events_detected)}/{int(r.events_eligible)} | {fmt(r.alarm_ppv)} | "
-                     f"{fmt(r.false_alarms_per_hour)} |")
-    lines += ["", "## Kiểm chứng calibration", "",
-              "Mean xác suất sau calibrate phải bám prevalence thật, nếu không mọi so sánh ngưỡng và phép trung "
-              "bình ensemble đều sai (lỗi F2 của v1).", "",
-              "| Phương pháp | Phút | Mean thô | Mean sau calibrate | Prevalence |", "|---|---:|---:|---:|---:|"]
+        out.append(f"| {r.horizon // 60} | `{r.method}` | {fmt(r.threshold)} | {fmt(r.event_sensitivity)} | "
+                   f"{int(r.events_detected)}/{int(r.events_eligible)} | {fmt(r.alarm_ppv)} | "
+                   f"{fmt(r.false_alarms_per_hour)} |")
+    out += ["", "## Kiểm chứng calibration", "",
+            "Mean xác suất sau calibrate phải bám prevalence thật, nếu không mọi so sánh ngưỡng và phép trung "
+            "bình ensemble đều sai (lỗi F2 của v1).", "",
+            "| Phương pháp | Phút | Mean thô | Mean sau calibrate | Prevalence |", "|---|---:|---:|---:|---:|"]
     for r in audit.itertuples():
-        lines.append(f"| `{r.method}` | {r.horizon // 60} | {r.raw_mean:.4f} | {r.calibrated_mean:.4f} | "
-                     f"{r.prevalence:.4f} |")
-    (OUT / "V2_METHOD_COMPARISON.md").write_text("\n".join(lines) + "\n", encoding="utf-8")
+        out.append(f"| `{r.method}` | {r.horizon // 60} | {r.raw_mean:.4f} | {r.calibrated_mean:.4f} | "
+                   f"{r.prevalence:.4f} |")
+    (OUT / "METHOD_COMPARISON.md").write_text("\n".join(out) + "\n", encoding="utf-8")
+
+
+def render():
+    info = json.loads((OUT / "run.json").read_text(encoding="utf-8"))
+    comparison = pd.read_csv(OUT / "method_comparison.csv")
+    used = pd.read_csv(OUT / "parameters.csv")
+    lines = body(info, comparison, used, pick_winners(comparison))
+    write_report(info, lines, comparison, pd.read_csv(OUT / "calibration_audit.csv"),
+                 pd.read_csv(OUT / "pareto_frontier.csv"))
+    write_readme(info, lines)
+    print(f"rendered E08 {info['version']} ({info['dataset']}) into README.md and METHOD_COMPARISON.md", flush=True)
+
+
+def main():
+    parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    parser.add_argument("--dataset", choices=DATASETS, default="development300")
+    parser.add_argument("--tabm", choices=TABM_MODES, default="frozen")
+    parser.add_argument("--render-only", action="store_true")
+    args = parser.parse_args()
+    if not args.render_only:
+        compute(args.dataset, args.tabm)
+    render()
 
 
 if __name__ == "__main__":

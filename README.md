@@ -20,12 +20,14 @@ UC04: dự báo sớm tụt huyết áp trong mổ. **v0.2 đang phát triển, 
 - [E04: CatBoost và ngưỡng](reports/v0_4/REPORT.md#nhan-xet): có cải thiện trên pilot, chưa đạt mọi mục tiêu; [E05: mở rộng development](docs/experiments/E05_PLAN.md).
 - [E06: TabM và mô hình thay thế](reports/E06/REPORT.md) · [rà soát TabICLv2/TabPFN-3.5](docs/SOTA_E06.md). Đánh giá thăm dò trên cùng development300.
 - [Kiểm chứng riêng Pilot / VitalDB](reports/benchmarks/ASSESSMENT.md): replay 156 kết quả, 5.000 bootstrap ghép cặp; chưa xác nhận TabM tốt hơn toàn diện.
-- [E08: so sánh 14 phương pháp trên cùng quy trình](#e08--so-sánh-phương-pháp-v2-bản-đang-dùng) · [lịch sử version](scripts/e08/README.md).
+- [E08: so sánh các phương pháp trên cùng quy trình](#e08) · [lịch sử version](scripts/e08/README.md).
 
 <!-- e08:begin -->
-## E08 — so sánh phương pháp (v2, bản đang dùng)
+<a id="e08"></a>
 
-Mọi phương pháp đi qua đúng một quy trình, chỉ khác nhau ở bản thân phương pháp; FA/giờ đi kèm chính sách `recall_first` đã được chấp nhận. Sinh tự động bởi [`scripts/e08/run_comparison.py`](scripts/e08/run_comparison.py) từ chính các tham số đã chạy. [Báo cáo đầy đủ](reports/E08/V2_METHOD_COMPARISON.md) · [lịch sử version và 6 lỗi của v1](scripts/e08/README.md)
+## E08 v2 — so sánh phương pháp trên development300
+
+Mọi phương pháp đi qua đúng một quy trình, chỉ khác nhau ở bản thân phương pháp; FA/giờ đi kèm chính sách `recall_first` đã được chấp nhận. Sinh tự động bởi [`scripts/e08/run_comparison.py`](scripts/e08/run_comparison.py) từ chính các tham số đã chạy. [Báo cáo đầy đủ](reports/E08/METHOD_COMPARISON.md) · [các version và lỗi đã sửa](scripts/e08/README.md)
 
 ### Phương pháp được chọn
 
@@ -40,12 +42,14 @@ Mọi phương pháp đi qua đúng một quy trình, chỉ khác nhau ở bản
 
 | Tham số | Giá trị |
 |---|---|
-| Dữ liệu | development300, chia theo `subjectid`: FIT 170 ca · CALIBRATION 58 ca · VALIDATION 24 ca |
+| Dữ liệu | development300 (300 ca của E05), chia theo `subjectid` |
+| Ca / bệnh nhân | FIT 170 ca / 168 BN · CALIBRATION 58 ca / 57 BN · VALIDATION 24 ca / 24 BN |
 | Biến cố eligible (5 / 10 phút) | FIT 211/229 · CALIBRATION 65/73 · VALIDATION 23/24 |
 | Định nghĩa biến cố | MAP < 65 mmHg liên tục ≥ 60 s |
 | Đặc trưng | 140 numeric (bỏ static); `map_logistic` chỉ dùng `map_current`, `map_300_slope`, `map_300_std` |
-| Imputation | median, fit trên FIT, áp dụng y hệt cho FIT / CALIBRATION / VALIDATION |
+| Imputation | median từng cột, tính trên FIT, điền y hệt cho FIT / CALIBRATION / VALIDATION |
 | Calibration | StandardScaler → LogisticRegression `C=1e+06, max_iter=2000` trên log-odds của điểm thô; fit trên CALIBRATION, riêng từng phương pháp × horizon |
+| TabM | backbone đông lạnh từ E06 (train trên development300), chỉ calibrate lại |
 | Lưới ngưỡng | 40 điểm cố định 0,01–0,99 + 201 quantile xác suất trên CALIBRATION |
 | Chọn ngưỡng | `recall_first` trên CALIBRATION: recall cao nhất → PPV cao hơn → FA/giờ thấp hơn |
 | Chọn phương pháp | trên CALIBRATION, cùng thứ tự `recall_first` |
@@ -68,10 +72,10 @@ Mọi phương pháp đi qua đúng một quy trình, chỉ khác nhau ở bản
 | `catboost_plain` | CatBoost | 140 | `iterations=300, depth=5, learning_rate=0.05, l2_leaf_reg=5` | không | không | 1451 / 2566 |
 | `catboost_balanced` | CatBoost | 140 | `iterations=300, depth=5, learning_rate=0.05, l2_leaf_reg=5` | `auto_class_weights='Balanced'` | không | 1451 / 2566 |
 | `catboost_balanced_jitter` | CatBoost | 140 | `iterations=300, depth=5, learning_rate=0.05, l2_leaf_reg=5` | `auto_class_weights='Balanced'` | nhiễu Gaussian σ = 0.1 × std, +3 bản / window dương | 5804 / 10264 |
-| `tabm_20260917` | TabM | 140 | `k=16, width=64, epochs=30, patience=6, batch_size=512`; `n_blocks=2, dropout=0.1, PLE 8 bins x 4, AdamW lr=0.002 wd=3e-4`; dừng ở epoch 5 (backbone đông lạnh từ E06) | không | không | — (train ở E06) |
-| `tabm_20260918` | TabM | 140 | `k=16, width=64, epochs=30, patience=6, batch_size=512`; `n_blocks=2, dropout=0.1, PLE 8 bins x 4, AdamW lr=0.002 wd=3e-4`; dừng ở epoch 5 (backbone đông lạnh từ E06) | không | không | — (train ở E06) |
-| `tabm_20260919` | TabM | 140 | `k=16, width=64, epochs=30, patience=6, batch_size=512`; `n_blocks=2, dropout=0.1, PLE 8 bins x 4, AdamW lr=0.002 wd=3e-4`; dừng ở epoch 5 (backbone đông lạnh từ E06) | không | không | — (train ở E06) |
-| `ensemble_diverse_6` | ensemble | — | trung bình xác suất đã calibrate của `map_logistic`, `lgbm_jitter_3x`, `catboost_balanced_jitter`, `tabm_20260917`, `tabm_20260918`, `tabm_20260919` | — | — | — |
+| `tabm_20260917` | TabM | 140 | `k=16, width=64, epochs=30, patience=6, batch_size=512`; `n_blocks=2, dropout=0.1, PLE 8 bins x 4, AdamW lr=0.002 wd=3e-4`; dừng ở epoch 5 (backbone đông lạnh từ E06 (train trên development300), chỉ calibrate lại) | không | không | — |
+| `tabm_20260918` | TabM | 140 | `k=16, width=64, epochs=30, patience=6, batch_size=512`; `n_blocks=2, dropout=0.1, PLE 8 bins x 4, AdamW lr=0.002 wd=3e-4`; dừng ở epoch 5 (backbone đông lạnh từ E06 (train trên development300), chỉ calibrate lại) | không | không | — |
+| `tabm_20260919` | TabM | 140 | `k=16, width=64, epochs=30, patience=6, batch_size=512`; `n_blocks=2, dropout=0.1, PLE 8 bins x 4, AdamW lr=0.002 wd=3e-4`; dừng ở epoch 5 (backbone đông lạnh từ E06 (train trên development300), chỉ calibrate lại) | không | không | — |
+| `ensemble_diverse` | ensemble | — | trung bình xác suất đã calibrate của `map_logistic`, `lgbm_jitter_3x`, `catboost_balanced_jitter`, `tabm_20260917`, `tabm_20260918`, `tabm_20260919` | — | — | — |
 
 ### Kết quả 5 phút — `recall_first`, VALIDATION (23 biến cố)
 
@@ -90,7 +94,7 @@ Mọi phương pháp đi qua đúng một quy trình, chỉ khác nhau ở bản
 | `tabm_20260918` | 0.696 (0.438–0.875) | 16/23 | 0.119 (0.055–0.198) | 2.059 (1.271–2.820) | 0.865 | 0.201 | 0.006 |
 | `tabm_20260917` | 0.696 (0.438–0.875) | 16/23 | 0.112 (0.048–0.191) | 2.216 (1.375–3.167) | 0.865 | 0.216 | 0.007 |
 | `lgbm_scale_pos_20x` | 0.696 (0.499–0.883) | 16/23 | 0.098 (0.045–0.164) | 2.565 (1.713–3.512) | 0.855 | 0.197 | 0.005 |
-| `ensemble_diverse_6` | 0.652 (0.357–0.905) | 15/23 | 0.214 (0.103–0.333) | 0.960 (0.491–1.421) | 0.883 | 0.234 | 0.005 |
+| `ensemble_diverse` | 0.652 (0.357–0.905) | 15/23 | 0.214 (0.103–0.333) | 0.960 (0.491–1.421) | 0.883 | 0.234 | 0.005 |
 
 ### Kết quả 10 phút — `recall_first`, VALIDATION (24 biến cố)
 
@@ -98,7 +102,7 @@ Mọi phương pháp đi qua đúng một quy trình, chỉ khác nhau ở bản
 |---|---|---:|---|---|---:|---:|---:|
 | `map_logistic` ★ | 0.917 (0.733–1.000) | 22/24 | 0.284 (0.162–0.443) | 1.260 (0.813–1.774) | 0.804 | 0.222 | 0.028 |
 | `catboost_balanced_jitter` | 0.917 (0.733–1.000) | 22/24 | 0.188 (0.110–0.321) | 2.483 (1.704–3.424) | 0.822 | 0.198 | 0.011 |
-| `ensemble_diverse_6` | 0.875 (0.700–1.000) | 21/24 | 0.235 (0.142–0.365) | 1.630 (1.021–2.324) | 0.828 | 0.235 | 0.012 |
+| `ensemble_diverse` | 0.875 (0.700–1.000) | 21/24 | 0.235 (0.142–0.365) | 1.630 (1.021–2.324) | 0.828 | 0.235 | 0.012 |
 | `tabm_20260917` | 0.875 (0.700–1.000) | 21/24 | 0.200 (0.113–0.325) | 1.927 (1.145–2.787) | 0.813 | 0.227 | 0.006 |
 | `tabm_20260919` | 0.875 (0.667–1.000) | 21/24 | 0.185 (0.096–0.331) | 2.205 (1.330–3.110) | 0.826 | 0.245 | 0.009 |
 | `lgbm_plain` | 0.875 (0.700–1.000) | 21/24 | 0.173 (0.106–0.283) | 2.390 (1.661–3.362) | 0.823 | 0.188 | 0.009 |
@@ -114,7 +118,7 @@ Mọi phương pháp đi qua đúng một quy trình, chỉ khác nhau ở bản
 **Đọc bảng:**
 
 - ★ = phương pháp chọn trên CALIBRATION; VALIDATION chỉ để báo cáo.
-- Mỗi biến cố trên VALIDATION = 4,2–4,3 điểm recall, CI95 rất rộng: chênh lệch dưới ~1 biến cố **không** đủ kết luận phương pháp nào hơn.
+- Mỗi biến cố trên VALIDATION = 4.2–4.3 điểm recall; chênh lệch nằm gọn trong CI95 **không** đủ kết luận phương pháp nào hơn.
 - AUROC / AP / ECE không phụ thuộc ngưỡng — dùng để so khả năng phân biệt tách khỏi điểm vận hành.
 - Development validation, **không phải** bằng chứng xác nhận độc lập; chưa mở pilot_test/global test.
 <!-- e08:end -->
@@ -192,7 +196,7 @@ Git hiện có mốc `3cdadde — v0.1`. Không tạo commit/tag/push chỉ đ�
 | E04 | CatBoost ba seed, ablation ngưỡng | [Báo cáo](reports/v0_4/REPORT.md), [nhận xét](reports/v0_4/REPORT.md#nhan-xet), [hướng dẫn](docs/versions/V0_4_RUNBOOK.md) |
 | E05 | Development 300 ca, split ổn định và ablation | [Plan](docs/experiments/E05_PLAN.md), [kết quả](reports/E05/REPORT.md), [subgroup/lead time](reports/E05/SUBGROUPS.md) |
 | E06 | TabM+PLE ba seed/ensemble, monotone LightGBM | [Plan](docs/experiments/E06_PLAN.md), [nguồn SOTA](docs/SOTA_E06.md), [kết quả](reports/E06/REPORT.md) |
-| E08 | So sánh 14 phương pháp (cân bằng lớp, augmentation, CatBoost, TabM, ensemble) trên một quy trình; v1 đã rút lại do 6 lỗi | [Plan](docs/experiments/E08_PLAN.md), [kết quả v2](#e08--so-sánh-phương-pháp-v2-bản-đang-dùng), [lịch sử version](scripts/e08/README.md) |
+| E08 | So sánh các phương pháp (cân bằng lớp, augmentation, CatBoost, TabM, ensemble) trên một quy trình; v1 đã rút lại do 6 lỗi | [Plan](docs/experiments/E08_PLAN.md), [kết quả](#e08), [lịch sử version](scripts/e08/README.md) |
 
 Tên đường dẫn cũ `v0_3`, `v0_4`, `run_version03.py`, `run_version04.py` là **mã thí nghiệm lịch sử**, không phải release v0.3/v0.4. Giữ chúng để không làm hỏng đường dẫn checkpoint, source snapshot và hashes đã đăng ký. Không sửa lại số liệu, timestamp hay hash trong các artifact cũ.
 

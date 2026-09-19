@@ -1,9 +1,10 @@
 #!/usr/bin/env bash
 # E08 v3: method comparison on every eligible VitalDB case except the locked global test.
-#   FIT         = development_seen + unseen_train  (2.559 ca, 3.069/3.326 biến cố)
-#   CALIBRATION = unseen_calibration               (280 ca, 293/308 biến cố)
-#   VALIDATION  = unseen_validation                (271 ca, 307/333 biến cố)
+#   FIT         = development_seen + unseen_train  (2.559 ca nếu có đủ dữ liệu tiền xử lý)
+#   CALIBRATION = unseen_calibration               (280 ca)
+#   VALIDATION  = unseen_validation                (271 ca)
 #   unseen_test (516 ca) is never read.
+# Ca nào thiếu file tiền xử lý sẽ bị bỏ qua, có cảnh báo, và số ca thật được ghi vào báo cáo.
 #
 # Run with bash, not python:
 #   bash scripts/e08/run_v3_full_vitaldb.sh                  # TabM skipped — fastest
@@ -34,7 +35,7 @@ export PYTHONPATH="src${SEP}.local_deps${PYTHONPATH:+${SEP}${PYTHONPATH}}"
 export PYTHONIOENCODING=utf-8
 
 link_inputs() {
-  for rel in data/vitaldb_full/csv_cases reports/E07/cohort_manifest.csv data/development300/dataset.json artifacts/E06; do
+  for rel in data/vitaldb_full/csv_cases data/vitaldb_full/cases reports/E07/cohort_manifest.csv data/development300/dataset.json artifacts/E06; do
     if [ ! -e "$rel" ] && [ -e "$1/$rel" ]; then
       mkdir -p "$(dirname "$rel")" && ln -s "$1/$rel" "$rel" && echo "liên kết $rel -> $1/$rel"
     fi
@@ -47,9 +48,11 @@ elif [ ! -e data/vitaldb_full/csv_cases ] && [ -d /kaggle/input ]; then
   [ -z "$found" ] || link_inputs "${found%/data/vitaldb_full/csv_cases}"
 fi
 
-for path in data/vitaldb_full/csv_cases reports/E07/cohort_manifest.csv data/development300/dataset.json; do
+for path in reports/E07/cohort_manifest.csv data/development300/dataset.json; do
   [ -e "$path" ] || { echo "Thiếu $path — upload dữ liệu E07 (xem đầu file) hoặc đặt E08_INPUT." >&2; exit 1; }
 done
+[ -d data/vitaldb_full/csv_cases ] || [ -d data/vitaldb_full/cases ] || {
+  echo "Thiếu data/vitaldb_full/csv_cases (hoặc cases) — không có dữ liệu tiền xử lý để chạy." >&2; exit 1; }
 if [ "$TABM" = "frozen" ]; then
   [ -d artifacts/E06/tabm_20260917 ] || { echo "TABM=frozen cần artifacts/E06/tabm_*/bundle.joblib." >&2; exit 1; }
 fi

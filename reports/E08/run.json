@@ -1,0 +1,42 @@
+{
+ "version": "v2",
+ "dataset": "development300",
+ "tabm": "frozen",
+ "seconds": 2683,
+ "ensemble_members": [
+  "map_logistic",
+  "lgbm_jitter_3x",
+  "catboost_balanced_jitter",
+  "tabm_20260917",
+  "tabm_20260918",
+  "tabm_20260919"
+ ],
+ "n_features": 140,
+ "splits": {
+  "FIT": [
+   170,
+   168,
+   211,
+   229
+  ],
+  "CALIBRATION": [
+   58,
+   57,
+   65,
+   73
+  ],
+  "VALIDATION": [
+   24,
+   24,
+   23,
+   24
+  ]
+ },
+ "protocol": {
+  "map_threshold": 65.0,
+  "event_seconds": 60,
+  "alarm_persistence": 2,
+  "alarm_cooldown_seconds": 300,
+  "cadence_seconds": 30
+ }
+}

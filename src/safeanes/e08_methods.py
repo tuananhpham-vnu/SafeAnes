@@ -37,6 +37,7 @@ DATASETS = ("development300", "full")
 FULL_ROLES = {"development_seen": "fit", "unseen_train": "fit",
               "unseen_calibration": "calibration", "unseen_validation": "validation"}
 LOCKED_GROUP = "unseen_test"
+CASE_DIRS = ("csv_cases", "cases")  # E07b parity output first, then the earlier E07 run
 
 
 @dataclass(frozen=True)
@@ -84,6 +85,7 @@ class Context:
     X_fit: np.ndarray
     X_cal: np.ndarray
     X_val: np.ndarray
+    missing_cases: int = 0
 
     def fit_matrix(self, horizon):
         known = self.fit_rows[f"y_{horizon}"].ge(0).to_numpy()
@@ -99,9 +101,9 @@ def load_context(root, dataset="development300"):
     protocol = Protocol(**{**meta["protocol"], "horizons_seconds": tuple(meta["protocol"]["horizons_seconds"])})
     features = [f for f in meta["features"] if not f.startswith("static_")]
     if dataset == "development300":
-        rows, X, events = _development300(root, features)
+        (rows, X, events), missing = _development300(root, features), 0
     elif dataset == "full":
-        rows, X, events = _full_vitaldb(root, features)
+        rows, X, events, missing = _full_vitaldb(root, features)
     else:
         raise ValueError(f"Unknown dataset {dataset}; expected one of {DATASETS}")
 
@@ -112,7 +114,8 @@ def load_context(root, dataset="development300"):
                    monotone=[-1 if f in MONOTONE_FEATURES else 0 for f in features],
                    map_index=np.array([features.index(f) for f in MAP_FEATURES]),
                    fit_rows=rows["fit"], cal_rows=rows["calibration"], val_rows=rows["validation"],
-                   X_fit=X["fit"], X_cal=X["calibration"], X_val=X["validation"])
+                   X_fit=X["fit"], X_cal=X["calibration"], X_val=X["validation"],
+                   missing_cases=missing)
 
 
 def _usable_for_fit(frame):
@@ -135,16 +138,27 @@ def _development300(root, features):
 def _full_vitaldb(root, features):
     """Read case by case into numpy so peak memory stays ~2x the FIT matrix, not ~5x."""
     import joblib
+    case_dir = next((root / "data/vitaldb_full" / name for name in CASE_DIRS
+                     if (root / "data/vitaldb_full" / name).is_dir()), None)
+    if case_dir is None:
+        raise FileNotFoundError(f"Không thấy data/vitaldb_full/{{{','.join(CASE_DIRS)}}}")
     manifest = pd.read_csv(root / "reports/E07/cohort_manifest.csv")
     manifest = manifest[manifest.eligible]
     meta_parts, x_parts, events = {r: [] for r in ROLES}, {r: [] for r in ROLES}, []
+    missing = 0
     for group, role in FULL_ROLES.items():
         for caseid in manifest.loc[manifest.evaluation_group.eq(group), "caseid"]:
-            case = joblib.load(root / "data/vitaldb_full/csv_cases" / f"{caseid}.joblib")
+            path = case_dir / f"{caseid}.joblib"
+            if not path.exists():  # a case whose preprocessing is not on this machine
+                missing += 1
+                continue
+            case = joblib.load(path)
             frame = _usable_for_fit(case["frame"]) if role == "fit" else case["frame"]
             meta_parts[role].append(frame[META])
             x_parts[role].append(frame[features].to_numpy(dtype=float))
             events += case["events"]
+    if missing:
+        print(f"CẢNH BÁO: thiếu {missing} ca tiền xử lý trong {case_dir.name}; chạy trên tập con.", flush=True)
     rows, X = {}, {}
     for role in ROLES:
         rows[role] = pd.concat(meta_parts.pop(role), ignore_index=True)
@@ -158,7 +172,7 @@ def _full_vitaldb(root, features):
     for a, b in (("fit", "calibration"), ("fit", "validation"), ("calibration", "validation")):
         if subjects[a] & subjects[b]:
             raise RuntimeError(f"Patients shared between {a} and {b}")
-    return rows, X, pd.DataFrame(events)
+    return rows, X, pd.DataFrame(events), missing
 
 
 def _fit_medians(X):

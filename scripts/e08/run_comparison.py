@@ -156,6 +156,7 @@ def compute(dataset, tabm):
     info = {"version": VERSION[dataset], "dataset": dataset, "tabm": tabm,
             "seconds": round(time.perf_counter() - started), "ensemble_members": members,
             "n_features": len(ctx.features), "splits": split_summary(ctx),
+            "missing_cases": ctx.missing_cases,
             "protocol": {"map_threshold": p.map_threshold, "event_seconds": p.event_seconds,
                          "alarm_persistence": p.alarm_persistence,
                          "alarm_cooldown_seconds": p.alarm_cooldown_seconds,
@@ -213,8 +214,14 @@ def code(params):
 
 def pipeline_table(info):
     p, splits = info["protocol"], info["splits"]
-    return ["| Tham số | Giá trị |", "|---|---|",
-        f"| Dữ liệu | {DATASET_TEXT[info['dataset']]} |",
+    missing = info.get("missing_cases", 0)
+    lines = ["| Tham số | Giá trị |", "|---|---|",
+        f"| Dữ liệu | {DATASET_TEXT[info['dataset']]} |"]
+    if missing:
+        lines.append(f"| **Ca thiếu dữ liệu tiền xử lý** | **{missing} ca** trong nhóm FIT/CALIBRATION/"
+                     "VALIDATION không có file tiền xử lý trên máy chạy nên bị bỏ qua — đây là tập con "
+                     "do dữ liệu cục bộ, **không phải** tiêu chí cohort của protocol |")
+    return lines + [
         "| Ca / bệnh nhân | " + " · ".join(f"{k} {v[0]} ca / {v[1]} BN" for k, v in splits.items()) + " |",
         "| Biến cố eligible (5 / 10 phút) | " + " · ".join(f"{k} {v[2]}/{v[3]}" for k, v in splits.items()) + " |",
         f"| Định nghĩa biến cố | MAP < {p['map_threshold']:g} mmHg liên tục ≥ {p['event_seconds']} s |",

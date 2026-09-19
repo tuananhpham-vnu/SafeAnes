@@ -1,0 +1,32 @@
+[
+  {
+    "caseid": 2442,
+    "time": 1821.0,
+    "outcome": "false",
+    "lead_seconds": null
+  },
+  {
+    "caseid": 2442,
+    "time": 2301.0,
+    "outcome": "censored",
+    "lead_seconds": null
+  },
+  {
+    "caseid": 3035,
+    "time": 4659.0,
+    "outcome": "true",
+    "lead_seconds": 206.0
+  },
+  {
+    "caseid": 3035,
+    "time": 5409.0,
+    "outcome": "false",
+    "lead_seconds": null
+  },
+  {
+    "caseid": 3035,
+    "time": 6699.0,
+    "outcome": "false",
+    "lead_seconds": null
+  }
+]

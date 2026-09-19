@@ -10,7 +10,7 @@ Bản mới nhất nằm ở `reports/E08/`; mọi bản cũ hơn nằm trong `r
 
 | Version | Dữ liệu | Cách chạy | Trạng thái |
 |---|---|---|---|
-| **v3** | Toàn bộ VitalDB trừ global test: FIT 2.559 ca · CALIBRATION 280 ca · VALIDATION 271 ca (307/333 biến cố) | [`run_v3_full_vitaldb.sh`](run_v3_full_vitaldb.sh) | Đã viết, **chờ chạy** |
+| **v3** | VitalDB trừ global test. Đủ dữ liệu: FIT 2.559 ca · CALIBRATION 280 · VALIDATION 271 (307/333 biến cố). Với dữ liệu hiện có trên máy (thiếu 1.148 ca): FIT 1.542 · CALIBRATION 181 · VALIDATION 175 (221/239 biến cố) | [`run_v3_full_vitaldb.sh`](run_v3_full_vitaldb.sh) | Đã viết, **chờ chạy** |
 | v2 | development300: FIT 170 ca · CALIBRATION 58 ca · VALIDATION 24 ca (23/24 biến cố) | `run_comparison.py --dataset development300` | Đang hiển thị cho tới khi v3 chạy xong |
 | v2_initial | development300, bản v2 đầu tiên | đã gộp vào `run_comparison.py` | Thay thế — còn lỗi F6, ensemble chưa có TabM |
 | v1 | development300, tối ưu tuần tự theo giai đoạn | [`version/v1_sequential_stages/`](version/v1_sequential_stages/) | Rút lại — 6 lỗi |
@@ -34,6 +34,11 @@ TABM=retrain bash scripts/e08/run_v3_full_vitaldb.sh     # train lại TabM trê
   `artifacts/E08/cache/` và được nạp lại, chỉ khi code phương pháp/đánh giá không đổi.
 - Global test `unseen_test` (516 ca) không bao giờ được đọc: bộ nạp chỉ mở các nhóm FIT/CALIBRATION/
   VALIDATION và dừng lại nếu phát hiện ca của global test hoặc bệnh nhân dùng chung giữa các tập.
+- Bộ nạp nhận `data/vitaldb_full/csv_cases` (bản E07b) hoặc `data/vitaldb_full/cases` (bản E07 chạy
+  trước). Ca nào thiếu file tiền xử lý thì bỏ qua kèm cảnh báo, và số ca thiếu được ghi thành một dòng
+  riêng trong bảng tham số của báo cáo — đây là **tập con do dữ liệu cục bộ**, không phải tiêu chí
+  cohort của protocol. Muốn có đủ cohort thì phải chạy lại tiền xử lý E07 cho các ca còn thiếu
+  (tải lại track thô từ VitalDB).
 
 Các lệnh khác:
 

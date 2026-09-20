@@ -5,7 +5,9 @@
 #   ARCH="tcn inception" SEEDS="20260917 20260918" !bash scripts/e08/run_dl_kaggle.sh
 #
 # Steps 1 and 2 rebuild what git does not carry (only part of data/vitaldb_full/cases is tracked,
-# and the ~1 GB sequence cache is not tracked at all). Both resume, so a rerun skips finished work.
+# and the ~1 GB sequence cache is not tracked at all). On a fresh Kaggle session both pull raw
+# tracks from the VitalDB API -- about 25k files, ~30 minutes in total, ~3 GB on disk. Both resume
+# from what is already on disk, so a rerun in the same session skips straight to training.
 set -euo pipefail
 cd "$(dirname "$0")/../.."
 export PYTHONPATH=src

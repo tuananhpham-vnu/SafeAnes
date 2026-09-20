@@ -22,13 +22,13 @@ ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "scripts"))
 from evaluate_full_vitaldb import DATA, build_one  # noqa: E402
 
-MANIFEST = ROOT / "data/vitaldb_development300/cohort_manifest.csv"
+# reports/E07 is the tracked copy: same 6388 rows and same columns as the data/ original,
+# which .gitignore drops, so a fresh clone still has the tid_*/opstart/opend a rebuild needs.
+MANIFEST = ROOT / "reports/E07/cohort_manifest.csv"
 
 
 def pending(limit=None):
-    manifest = pd.read_csv(MANIFEST)
-    manifest["evaluation_group"] = pd.read_csv(ROOT / "reports/E07/cohort_manifest.csv").evaluation_group
-    eligible = manifest[manifest.eligible]
+    eligible = pd.read_csv(MANIFEST).query("eligible")
     have = {int(p.stem) for p in (DATA / "cases").glob("*.joblib")}
     rows = eligible[~eligible.caseid.isin(have)].to_dict("records")
     return len(eligible), len(have), rows[:limit] if limit else rows

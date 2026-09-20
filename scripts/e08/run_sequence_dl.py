@@ -59,6 +59,16 @@ def predict(model, dataset, device, batch_size, workers):
     return np.concatenate(out) if out else np.zeros((0, 2))
 
 
+def amp_tools(device):
+    """torch.amp took the device argument in 2.4; Kaggle images are not always that new."""
+    import torch
+    cuda = device.type == "cuda"
+    try:
+        return torch.amp.GradScaler("cuda", enabled=cuda), lambda: torch.amp.autocast("cuda", enabled=cuda)
+    except TypeError:
+        return torch.cuda.amp.GradScaler(enabled=cuda), lambda: torch.cuda.amp.autocast(enabled=cuda)
+
+
 def train_one(ctx, architecture, seed, args, device):
     import torch
     from safeanes.models import NumericModel, masked_bce
@@ -77,7 +87,7 @@ def train_one(ctx, architecture, seed, args, device):
                          length=ctx.protocol.history_seconds // ctx.protocol.numeric_step_seconds,
                          width=TRAIN["width"], dropout=TRAIN["dropout"], layers=TRAIN["layers"]).to(device)
     optimizer = torch.optim.AdamW(model.parameters(), lr=TRAIN["lr"], weight_decay=TRAIN["weight_decay"])
-    scaler = torch.amp.GradScaler("cuda", enabled=device.type == "cuda")
+    scaler, autocast = amp_tools(device)
     y_stop = inner_stop[[f"y_{h}" for h in HORIZONS]].to_numpy(float)
 
     best, best_state, bad, history = -np.inf, None, 0, []
@@ -87,7 +97,7 @@ def train_one(ctx, architecture, seed, args, device):
         for x, static, y in loader(train_set, TRAIN["batch_size"], True, args.workers):
             x, static, y = x.to(device), static.to(device), y.to(device)
             optimizer.zero_grad(set_to_none=True)
-            with torch.amp.autocast("cuda", enabled=device.type == "cuda"):
+            with autocast():
                 loss = masked_bce(model(x, static), y)
             scaler.scale(loss).backward()
             scaler.step(optimizer)

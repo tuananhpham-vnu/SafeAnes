@@ -174,3 +174,59 @@ class WindowDataset:
             static = np.r_[np.where(good_static, (v - self.norm["static_mean"]) / self.norm["static_scale"], 0), good_static]
         y = row[[f"y_{h}" for h in self.store.protocol.horizons_seconds]].to_numpy(np.float32)
         return x.T.astype(np.float32), static.astype(np.float32), y
+
+
+class FullSequenceStore:
+    """Sequence windows for the full VitalDB cohort.
+
+    SequenceStore above validates against the pilot dataset manifest and its checksums, which the
+    full cohort has no counterpart for; this reads the index written by
+    scripts/e08/build_sequences_full.py instead. The window arithmetic is identical, so a window
+    here lines up with the same decision row in data/vitaldb_full/cases.
+    """
+    def __init__(self, root, protocol=None):
+        self.root = Path(root)
+        self.meta = json.loads((self.root / "index.json").read_text(encoding="utf-8"))
+        config = dict(self.meta["protocol"])
+        config["horizons_seconds"] = tuple(config["horizons_seconds"])
+        self.protocol = protocol or Protocol(**config)
+        if self.meta["protocol_hash"] != self.protocol.digest():
+            raise ValueError("Sequence cache built under a different protocol")
+        if self.meta["tracks"] != list(TRACKS):
+            raise ValueError("Sequence cache tracks differ from config.TRACKS")
+        self.length = self.protocol.history_seconds // self.protocol.numeric_step_seconds
+        self._cache = OrderedDict()
+
+    def __contains__(self, caseid):
+        return str(int(caseid)) in self.meta["cases"]
+
+    def array(self, caseid):
+        key = str(int(caseid))
+        if key not in self._cache:
+            self._cache[key] = np.load(self.root / f"{key}.npy", mmap_mode="r", allow_pickle=False)
+        self._cache.move_to_end(key)
+        if len(self._cache) > 32:
+            self._cache.popitem(last=False)
+        return self._cache[key]
+
+    def window(self, caseid, time):
+        record = self.meta["cases"][str(int(caseid))]
+        stop = int(np.floor((time - record["start"]) / self.protocol.numeric_step_seconds)) + 1
+        if stop < self.length or stop > record["steps"]:
+            raise ValueError(f"Window outside cached history: case {caseid} t={time}")
+        return np.asarray(self.array(caseid)[stop - self.length:stop], dtype=np.float32)
+
+
+def build_case_sequence(record, raw_dirs, protocol=Protocol()):
+    """Resample one case onto the numeric grid; same sample_case path as the features."""
+    raw = {}
+    for name in TRACKS:
+        tid = record.get(f"tid_{name}")
+        if tid is None or (isinstance(tid, float) and np.isnan(tid)) or pd.isna(tid):
+            continue
+        cache = next((d for d in raw_dirs if (Path(d) / f"{tid}.csv.gz").exists()), raw_dirs[-1])
+        raw[name] = read_numeric(fetch_csv(str(tid), cache))
+    _, grid, _, sampled, ages = sample_case(record, raw, protocol)
+    values = np.stack([sampled[k] for k in TRACKS], axis=1).astype("float32")
+    age = np.stack([np.minimum(ages[k], protocol.history_seconds) for k in TRACKS], axis=1)
+    return np.concatenate([values, age.astype("float32")], axis=1), float(grid[0])

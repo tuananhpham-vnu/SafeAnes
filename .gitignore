@@ -6,30 +6,27 @@ __pycache__/
 .ipynb_checkpoints/
 tests/
 !tests/test_tabular_sota.py
+!tests/test_waveform.py
 *.lock
 
 # Dữ liệu: chỉ giữ phần E08 v3 cần để chạy được từ một bản clone (ví dụ trên Kaggle).
-# Track thô (data/vitaldb*, data/sequences_v1, data/pilot_v1) không cần vì đã tiền xử lý xong.
+# Các tập con cũ (vitaldb pilot, development300, sequences_v1, pilot_v1) đã xóa; raw gộp vào data/vitaldb_full/raw.
 data/*
 !data/vitaldb_full/
 data/vitaldb_full/*
 !data/vitaldb_full/cases/
-!data/development300/
+!data/vitaldb_full/dataset.json
+!data/vitaldb_full/meta/
+data/vitaldb_full/meta/*
+!data/vitaldb_full/meta/cases.csv.gz
+!data/vitaldb_full/meta/cases.source.json
 
-# Artifacts: chỉ giữ backbone TabM (cho TABM=frozen/retrain) và roles của E05.
+# Artifacts: chỉ giữ backbone TabM (cho TABM=frozen/retrain).
 artifacts/*
-!artifacts/E05/
-artifacts/E05/*
-!artifacts/E05/roles.csv
 !artifacts/E06/
 artifacts/E06/*
 !artifacts/E06/tabm_20260917/
 !artifacts/E06/tabm_20260918/
 !artifacts/E06/tabm_20260919/
 
-# Reports: chỉ giữ manifest cohort của E07 (script v3 bắt buộc cần) và kết quả E08.
-reports/*
-!reports/E07/
-reports/E07/*
-!reports/E07/cohort_manifest.csv
-!reports/E08/
+logs/

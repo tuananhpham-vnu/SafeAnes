@@ -1,0 +1,9 @@
+pattern,control,event,control (% có beat),event (% có beat)
+giảm HR,770,542,13.7,11.8
+giảm SV + PPV cao/tăng (gợi ý tiền tải),598,609,10.7,13.2
+giảm SV + giảm dP/dt (gợi ý co bóp),126,83,2.2,1.8
+"giảm SV, không rõ",228,61,4.1,1.3
+giảm SVR,1332,1597,23.8,34.7
+giảm SVR + tăng thuốc mê,479,675,8.5,14.7
+thay đổi nhỏ (<5%),2071,1038,37.0,22.5
+thiếu dữ liệu beat,160,701,2.9,15.2

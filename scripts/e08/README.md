@@ -13,7 +13,7 @@ Bản mới nhất nằm ở `reports/E08/`; mọi bản cũ hơn nằm trong `r
 | **v3** | VitalDB trừ global test. Đủ dữ liệu: FIT 2.559 ca · CALIBRATION 280 · VALIDATION 271 (307/333 biến cố). Với dữ liệu hiện có trên máy (thiếu 1.148 ca): FIT 1.542 · CALIBRATION 181 · VALIDATION 175 (221/239 biến cố) | [`run_v3_full_vitaldb.sh`](run_v3_full_vitaldb.sh) | Đã viết, **chờ chạy** |
 | v2 | development300: FIT 170 ca · CALIBRATION 58 ca · VALIDATION 24 ca (23/24 biến cố) | `run_comparison.py --dataset development300` | Đang hiển thị cho tới khi v3 chạy xong |
 | v2_initial | development300, bản v2 đầu tiên | đã gộp vào `run_comparison.py` | Thay thế — còn lỗi F6, ensemble chưa có TabM |
-| v1 | development300, tối ưu tuần tự theo giai đoạn | [`version/v1_sequential_stages/`](version/v1_sequential_stages/) | Rút lại — 6 lỗi |
+| v1 | development300, tối ưu tuần tự theo giai đoạn | `version/v1_sequential_stages/` (đã xóa) | Rút lại — 6 lỗi |
 
 Khi v3 chạy xong, runner tự chuyển kết quả v2 vào `reports/E08/version/v2_development300_tabm-frozen/`
 và README gốc chuyển sang hiển thị v3.

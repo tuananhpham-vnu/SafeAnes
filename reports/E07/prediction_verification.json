@@ -1,0 +1,42 @@
+{
+  "execution": "E07b_csv_parity",
+  "checks": [
+    {
+      "caseid": 55,
+      "horizon": 300,
+      "features_exactly_match_E05": true,
+      "probabilities_and_alarm_counts_match_E06": true
+    },
+    {
+      "caseid": 101,
+      "horizon": 300,
+      "features_exactly_match_E05": true,
+      "probabilities_and_alarm_counts_match_E06": true
+    },
+    {
+      "caseid": 355,
+      "horizon": 300,
+      "features_exactly_match_E05": true,
+      "probabilities_and_alarm_counts_match_E06": true
+    },
+    {
+      "caseid": 55,
+      "horizon": 600,
+      "features_exactly_match_E05": true,
+      "probabilities_and_alarm_counts_match_E06": true
+    },
+    {
+      "caseid": 101,
+      "horizon": 600,
+      "features_exactly_match_E05": true,
+      "probabilities_and_alarm_counts_match_E06": true
+    },
+    {
+      "caseid": 355,
+      "horizon": 600,
+      "features_exactly_match_E05": true,
+      "probabilities_and_alarm_counts_match_E06": true
+    }
+  ],
+  "tests_executed": false
+}

@@ -1,26 +1,31 @@
-# SafeAnes
+# SafeAnes — UC04
 
-**E07 đang đánh giá toàn bộ VitalDB theo yêu cầu ngày 19/09/2026:** audit 6.388 ca,
-3.626 ca đủ điều kiện; model/ngưỡng được khóa trước chạy. Global final test được mở
-trong đợt này; các ghi chú “chưa mở final test” ở báo cáo E01–E06 là trạng thái lịch sử.
-[Plan E07](docs/experiments/E07_PLAN.md) · [Tiến độ](reports/E07/progress.json).
+UC04: dự báo sớm tụt huyết áp trong mổ (IOH: MAP < 65 mmHg ≥ 60 s), gợi ý nguyên nhân và ước lượng độ tin cậy, trên toàn bộ
+VitalDB (6.388 ca; 3.626 ca eligible). Global final test (`unseen_test`) được khóa cho tới khi mô hình, calibrator, ngưỡng và
+chính sách cảnh báo đã cố định.
 
-UC04: dự báo sớm tụt huyết áp trong mổ. **v0.2 đang phát triển, chưa push**, gộp toàn bộ mô hình mới, sửa lỗi và thí nghiệm hiện tại: TCN/Transformer, Inception/TimesNet, ensemble, CatBoost và mở rộng development. Mỗi lần push mới tăng release; mỗi thí nghiệm dùng mã E01, E02… Global final test vẫn chưa sử dụng.
+**Tài liệu chính**
+- [Insight dữ liệu VitalDB: mô tả, nhiễu, quan hệ, feature ảnh hưởng](reports/EDA/INSIGHTS.md)
+- [EDA toàn cohort](reports/EDA/REPORT.md) · [notebook](notebooks/05_eda_vitaldb.ipynb)
+- [Đề xuất phương pháp HemoDecomp](docs/UC04_METHOD_PROPOSAL.md) (dự báo + phân tách nguyên nhân + độ tin cậy)
+- [Kế hoạch nghiên cứu và yêu cầu độ chính xác](UC04_RESEARCH_PLAN.md)
+- [Protocol](docs/PROTOCOL.md) · [Data card](docs/DATA_CARD.md) · [Model card](docs/MODEL_CARD.md) · [Nguồn](docs/SOURCES.md)
+- E07 đánh giá toàn VitalDB: [plan](docs/experiments/E07_PLAN.md), [hiệu chỉnh](docs/experiments/E07_CORRECTION.md)
+- [E08: so sánh phương pháp trên cùng quy trình](#e08) · [plan](docs/experiments/E08_PLAN.md) · [lịch sử version](scripts/e08/README.md)
 
-- [Kế hoạch và yêu cầu độ chính xác](UC04_RESEARCH_PLAN.md)
-- [Báo cáo tổng hợp v0.2: 300 ca, ba seed và ablation](reports/v0_2/REPORT.md)
-- [Các bước tìm hiểu/triển khai](docs/IMPLEMENTATION_STEPS.md)
-- [Tiến độ và các mốc còn thiếu của v0.2](docs/IMPLEMENTATION_STEPS.md#tien-do)
-- [Nguồn và ánh xạ vào code](docs/SOURCES.md)
-- [Protocol và giới hạn](docs/PROTOCOL.md)
-- [Hướng dẫn TCN/Transformer, resume và ablation](docs/SEQUENCE_RUNBOOK.md)
-- [Model card](docs/MODEL_CARD.md) · [Data card](docs/DATA_CARD.md)
-- [Release v0.2 và các đợt thí nghiệm](README.md#release)
-- [Rà soát phương pháp mạnh/SOTA](docs/SOURCES.md#review-e03) · [E03: CNN/ensemble](reports/v0_3/REPORT.md)
-- [E04: CatBoost và ngưỡng](reports/v0_4/REPORT.md#nhan-xet): có cải thiện trên pilot, chưa đạt mọi mục tiêu; [E05: mở rộng development](docs/experiments/E05_PLAN.md).
-- [E06: TabM và mô hình thay thế](reports/E06/REPORT.md) · [rà soát TabICLv2/TabPFN-3.5](docs/SOTA_E06.md). Đánh giá thăm dò trên cùng development300.
-- [Kiểm chứng riêng Pilot / VitalDB](reports/benchmarks/ASSESSMENT.md): replay 156 kết quả, 5.000 bootstrap ghép cặp; chưa xác nhận TabM tốt hơn toàn diện.
-- [E08: so sánh các phương pháp trên cùng quy trình](#e08) · [lịch sử version](scripts/e08/README.md).
+**Bố cục repo (dọn ngày 24/09/2026).** Đã xóa pipeline pilot/development300 (E01–E06, v0.3/v0.4): tập con dữ liệu, script,
+notebook 01–04, configs, báo cáo và artifacts tương ứng. Code/tài liệu đã commit vẫn còn trong lịch sử git (mốc v0.1 và các
+commit trước 24/09/2026); báo cáo/artifacts chưa từng commit của E01–E06 đã bị xóa hẳn. Giữ lại: E06 backbone TabM
+(`artifacts/E06`, cho E08 `TABM=frozen`), E07, E08, EDA.
+
+| Thư mục | Nội dung |
+|---|---|
+| `data/vitaldb_full/meta` | `cases`, `trks`, cohort manifest, `uc04_tracks.csv`, labs |
+| `data/vitaldb_full/raw` | Track số VitalDB (`<tid>.csv.gz` + `.source.json` có SHA-256) |
+| `data/vitaldb_full/cases` | Decision row 30 s, nhãn y5/y10, biến cố theo ca (E07) |
+| `data/sequences_full` | Chuỗi 2 s của 7 track lõi |
+| `data/beats_full` | Beat features 2 s từ waveform ART |
+| `reports/E07`, `reports/E08`, `reports/EDA` | Kết quả đánh giá toàn VitalDB, so sánh phương pháp, EDA/insight |
 
 <!-- e08:begin -->
 <a id="e08"></a>
@@ -123,84 +128,33 @@ Mọi phương pháp đi qua đúng một quy trình, chỉ khác nhau ở bản
 - Development validation, **không phải** bằng chứng xác nhận độc lập; chưa mở pilot_test/global test.
 <!-- e08:end -->
 
-## Chạy local
+## Chạy lại
 
-Python ≥3.11. Tạo môi trường bằng `python -m venv .venv`, kích hoạt trước khi cài: Windows PowerShell dùng `.venv\Scripts\Activate.ps1`; Linux dùng `source .venv/bin/activate`.
-
-```sh
-python -m pip install -e ".[dev]"
-python -m pytest -q
-python -m safeanes.cli fetch-pilot --cases 60 --workers 4
-python -m safeanes.cli build-pilot --out data/pilot_v1
-python -m safeanes.cli run-pilot --dataset data/pilot_v1 --out artifacts/pilot_v1
-```
-
-Tải cần Internet; các bước sau dùng cache. Lỗi tải có thể chạy lại để resume. Dataset và experiment output phải mới/rỗng để không ghi đè kết quả. Có thể chạy trực tiếp với `PYTHONPATH=src` nếu môi trường đã có dependencies.
-
-Baseline mặc định: score MAP, logistic MAP/slope/variability, HistGradientBoosting. LightGBM tùy chọn: cài `python -m pip install -e ".[boosting]"` rồi thêm `--models map logistic hist_gradient lightgbm`. Bootstrap pilot mặc định 200 theo bệnh nhân.
-
-## Kaggle
-
-Dùng [notebook baseline](notebooks/01_uc04_pilot.ipynb), [chuẩn bị sequence](notebooks/02_numeric_sequences.ipynb), [train TCN/Transformer](notebooks/03_tcn_transformer.ipynb) và [phát lại/báo cáo](notebooks/04_case_replay.ipynb). Sửa đường dẫn Input theo tài khoản; output ở `/kaggle/working`. Chạy bước chuẩn bị dữ liệu trên CPU và chỉ bật T4 cho notebook train. Chưa có benchmark thực thi trên T4/Kaggle.
-
-## TCN và Transformer
+Python ≥ 3.11: `python -m pip install -e ".[dev,boosting,plots]"`, rồi `python -m pytest -q`. Tải dữ liệu cần Internet và
+resume được (chạy lại lệnh); mọi file raw được kiểm SHA-256.
 
 ```sh
-python -m pip install -e ".[deep,plots]"
-python -m safeanes.cli build-sequences --dataset data/pilot_v1 --root data/vitaldb --out data/sequences_v1
-python -m safeanes.cli train-sequence --config configs/tcn.json --out artifacts/tcn_v1
-python -m safeanes.cli train-sequence --config configs/transformer.json --out artifacts/transformer_v1
-python -m safeanes.cli report --run artifacts/tcn_v1 --out reports/tcn_v1
-python -m safeanes.cli report --run artifacts/transformer_v1 --out reports/transformer_v1
+python scripts/e08/build_sequences_full.py             # chuỗi 2 s cho 7 track lõi
+python scripts/data/fetch_uc04_tracks.py --workers 8    # track UC04 + labs
+python scripts/data/extract_beats.py --workers 8        # beat features từ SNUADC/ART (không lưu waveform thô)
+python scripts/eda/run_eda.py                           # reports/EDA/REPORT.md
+python scripts/eda/run_insights.py                      # reports/EDA/INSIGHTS.md
+python scripts/e08/run_comparison.py --dataset full     # E08 v3 trên toàn VitalDB (trừ global test)
 ```
 
-Mỗi output phải mới/rỗng. Với lần train bị gián đoạn, thêm `--resume` và giữ nguyên code/data/config; xem [runbook](docs/SEQUENCE_RUNBOOK.md). CUDA dùng FP16, CPU dùng FP32. Không coi việc hoàn tất train là đạt mục tiêu hiệu năng.
+Trên Windows, đặt `PYTHONIOENCODING=utf-8` khi chuyển log ra file (log tiếng Việt). Các script đánh giá E07
+(`scripts/evaluate_full_vitaldb.py`, `continue_full_vitaldb.py`, `report_full_vitaldb.py`) dùng model E05 và tập con
+development300 đã xóa, nên chỉ còn giá trị tham khảo; kết quả E07 vẫn ở `reports/E07`.
 
-## Đầu ra
-
-| File | Nội dung |
-|---|---|
-| `data/vitaldb/cohort_manifest.csv` | Toàn bộ ca, subject split, lý do loại |
-| `data/vitaldb/raw/*.source.json` | URL, thời điểm tải và SHA-256 |
-| `data/pilot_v1/quality.csv` | Độ phủ nhãn, nhịp MAP, event/decision từng ca |
-| `data/pilot_v1/windows.csv.gz` | Feature causal, eligibility và nhãn; -1 là censored |
-| `artifacts/pilot_v1/report.json` | Metric, CI, threshold selection và quality gates |
-| `artifacts/pilot_v1/*_predictions.csv.gz` | Dự báo để kiểm tra/phát lại |
-| `artifacts/pilot_v1/*_alarms.json` | Episode thật, giả hoặc censored |
-
-`pilot_test` là tập thăm dò bên trong global train, **không phải final test**. Các con số trong kế hoạch là mục tiêu, không phải hiệu năng được hứa trước. Dữ liệu lớn và artifacts không đưa vào Git.
-
-<!-- consolidated:release -->
 <a id="release"></a>
 
-## Version phát hành và đợt thí nghiệm
+## Version và đợt thí nghiệm
 
-**Bản đang làm: v0.2 (chưa push).** Theo yêu cầu của chủ dự án, mỗi lần push mới tạo một version phát hành. Sửa lỗi, thêm mô hình, chạy seed hay mở rộng dữ liệu trong cùng đợt chưa push đều gộp vào v0.2; không tự tăng version sau mỗi thí nghiệm.
+Git có mốc `v0.1`; v0.2 đang phát triển, chưa push. Mỗi lần push mới tạo một version; thí nghiệm dùng mã E01, E02…
 
-[Báo cáo tổng hợp v0.2](reports/v0_2/REPORT.md) · [Tiến độ plan](docs/IMPLEMENTATION_STEPS.md#tien-do)
-
-Git hiện có mốc `3cdadde — v0.1`. Không tạo commit/tag/push chỉ để đổi cách đặt tên.
-
-| Release | Trạng thái | Phạm vi |
+| ID | Nội dung | Trạng thái |
 |---|---|---|
-| v0.1 | Mốc Git đã có | Baseline/pipeline ban đầu |
-| v0.2 | Đang phát triển, chưa push | Sequence models, Inception/TimesNet/ensemble, CatBoost, sửa ngưỡng, mở rộng development và toàn bộ sửa lỗi hiện tại |
-
-### Các đợt thí nghiệm trong v0.2
-
-| ID | Nội dung | Kết quả / kế hoạch |
-|---|---|---|
-| E01 | Baseline 60 ca | [Kết quả](reports/PILOT_BASELINE.md) |
-| E02 | TCN/Transformer | [Kiểm chứng triển khai](reports/IMPLEMENTATION_VALIDATION.md) |
-| E03 | Inception, TimesNet, ensemble | [Báo cáo](reports/v0_3/REPORT.md), [nhận xét](reports/v0_3/REPORT.md#nhan-xet) |
-| E04 | CatBoost ba seed, ablation ngưỡng | [Báo cáo](reports/v0_4/REPORT.md), [nhận xét](reports/v0_4/REPORT.md#nhan-xet), [hướng dẫn](docs/versions/V0_4_RUNBOOK.md) |
-| E05 | Development 300 ca, split ổn định và ablation | [Plan](docs/experiments/E05_PLAN.md), [kết quả](reports/E05/REPORT.md), [subgroup/lead time](reports/E05/SUBGROUPS.md) |
-| E06 | TabM+PLE ba seed/ensemble, monotone LightGBM | [Plan](docs/experiments/E06_PLAN.md), [nguồn SOTA](docs/SOTA_E06.md), [kết quả](reports/E06/REPORT.md) |
-| E08 | So sánh các phương pháp (cân bằng lớp, augmentation, CatBoost, TabM, ensemble) trên một quy trình; v1 đã rút lại do 6 lỗi | [Plan](docs/experiments/E08_PLAN.md), [kết quả](#e08), [lịch sử version](scripts/e08/README.md) |
-
-Tên đường dẫn cũ `v0_3`, `v0_4`, `run_version03.py`, `run_version04.py` là **mã thí nghiệm lịch sử**, không phải release v0.3/v0.4. Giữ chúng để không làm hỏng đường dẫn checkpoint, source snapshot và hashes đã đăng ký. Không sửa lại số liệu, timestamp hay hash trong các artifact cũ.
-
-Các báo cáo/plan đã khóa có thể giữ nhãn cũ trong nội dung lưu trữ. Quy ước phát hành tại trang này thay thế cách gọi version ở tài liệu lịch sử. Mọi công việc mới dùng E05, E06… hoặc tên đợt thí nghiệm; package version chỉ đổi ở đợt push tiếp theo.
-
-Source thay đổi sau thí nghiệm khiến runner cũ từ chối ghi đè là hành vi đúng. Tái lập lịch sử dùng source snapshot và đúng input hashes; tiếp tục nghiên cứu dùng đợt mới. Global final test vẫn chưa sử dụng.
-
+| E01–E06 | Pilot 60 ca, TCN/Transformer, Inception/TimesNet, CatBoost, development 300 ca, TabM | Đã xóa khỏi repo (xem lịch sử git) |
+| E07 | Đánh giá toàn VitalDB, audit cohort | [plan](docs/experiments/E07_PLAN.md), `reports/E07` |
+| E08 | So sánh phương pháp trên một quy trình | [plan](docs/experiments/E08_PLAN.md), [kết quả](#e08) |
+| EDA | EDA + insight toàn cohort cho UC04 | [REPORT](reports/EDA/REPORT.md), [INSIGHTS](reports/EDA/INSIGHTS.md) |

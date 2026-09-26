@@ -1,0 +1,16 @@
+,giá trị
+số ca phân tích outcome,3110
+số bệnh nhân,2991
+giờ theo dõi (lưới 2 s),8860.7
+số biến cố IOH,5306
+% ca có ≥1 biến cố,50.9
+biến cố / giờ,0.599
+"thời lượng biến cố, median [IQR] (s)",186.0 [105.0–365.0]
+"MAP thấp nhất, median [IQR]",56.0 [51.0–59.0]
+"AUC<65, median [IQR] (mmHg·phút)",14.9 [6.9–34.1]
+% biến cố trong 20 phút đầu sau rạch da,18.1
+% biến cố đủ lịch sử cho y5 (eligible_300),69.1
+% biến cố đủ lịch sử cho y10 (eligible_600),74.8
+% thời gian MAP<65 (median theo ca),1.98
+y5 dương / âm / censored (decision row eligible),"23,663 / 738,967 / 51,109 (prevalence 3.1%)"
+y10 dương / âm / censored (decision row eligible),"44,610 / 678,281 / 90,848 (prevalence 6.2%)"

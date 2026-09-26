@@ -23,7 +23,7 @@ trong global test của E07 — điều kiện này giữ nguyên từ bản tr�
 - "Đạt" ở mỗi giai đoạn là **ngưỡng nội bộ để chuyển giai đoạn**, không phải gate cuối ở
   [mục 8 kế hoạch chính](../../UC04_RESEARCH_PLAN.md). Gate cuối chỉ áp dụng ở Giai đoạn 4.
 - Cải thiện một metric gần như luôn đánh đổi các metric khác (đã thấy ở E06: TabM tăng recall
-  5 phút đi kèm tăng FA/giờ, [REPORT.md](../../reports/E06/REPORT.md)). Vì vậy mỗi giai đoạn phải
+  5 phút đi kèm tăng FA/giờ, REPORT.md (đã xóa)). Vì vậy mỗi giai đoạn phải
   ghi lại giá trị của hai metric còn lại làm baseline cho giai đoạn sau, không bỏ qua.
 - Không suy diễn số liệu paper (rare-event, ICU, sepsis, seizure) thành số liệu UC04 — chỉ dùng
   làm bằng chứng phương pháp có tác dụng đúng hướng, phải đo lại trên development VitalDB.
@@ -41,7 +41,7 @@ Mục tiêu tạm: đưa event recall 5 phút / 10 phút tiến gần 90% / 85% 
 chấp nhận PPV và FA/giờ xấu hơn hiện tại** — vẫn đo và ghi lại, không dùng để loại phương pháp.
 
 **Đã chạy chẩn đoán method #1 (hạ ngưỡng)** trên toàn bộ model E05/E06 bằng
-[stage1_recall.py](../../scripts/e08/version/v1_sequential_stages/stage1_recall.py), tái sử dụng curve
+stage1_recall.py (đã xóa), tái sử dụng curve
 validation đã có, không train lại. [Kết quả](../../reports/E08/version/v1/REPORT.md):
 
 - **5 phút: trần recall của mọi model đều dưới 0,90** (cao nhất 0,826, catboost_map_only) — chỉ
@@ -88,7 +88,7 @@ phần trăm so với Giai đoạn 1 — chốt số cụ thể khi có kết qu
 khi thấy dữ liệu).
 
 **Đã chạy phương pháp #2 (đồng thuận ensemble)** bằng
-[stage2_ppv.py](../../scripts/e08/version/v1_sequential_stages/stage2_ppv.py), so hai nhóm: 4 model tương
+stage2_ppv.py (đã xóa), so hai nhóm: 4 model tương
 quan cao (TabM 3 seed + LightGBM cùng feature) và 6 model đa dạng (thêm MAP + CatBoost).
 [Kết quả](../../reports/E08/version/v1/REPORT.md):
 

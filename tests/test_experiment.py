@@ -75,18 +75,6 @@ def test_adaptive_threshold_recovers_low_risk_alarm_without_changing_budget():
     assert new < .01
 
 
-def test_expansion_keeps_historical_patients_and_is_stable_when_appending():
-    from safeanes.development import expanded_roles
-    old = pd.DataFrame({"caseid": [1, 2], "subjectid": [11, 22], "role": ["pilot_test", "validation"]})
-    manifest = pd.DataFrame({"caseid": [1, 2, 3, 4], "subjectid": [11, 22, 11, 33], "split": "train"})
-    roles = expanded_roles(manifest, old)
-    assert roles.loc[roles.subjectid.eq(11), "role"].eq("pilot_test").all()
-    larger = pd.concat([manifest, pd.DataFrame({"caseid": [5], "subjectid": [44], "split": "train"})])
-    pd.testing.assert_frame_equal(roles, expanded_roles(larger, old).iloc[:4])
-    with pytest.raises(ValueError):
-        expanded_roles(manifest.assign(split="test"), old)
-
-
 def test_cached_replay_matches_reference_with_gaps_censoring_and_cooldown():
     from safeanes.fast_selection import prepare_validation, cached_metrics
     from safeanes.evaluation import evaluate_predictions

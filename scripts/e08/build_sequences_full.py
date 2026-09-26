@@ -27,7 +27,7 @@ ROOT = Path(__file__).resolve().parents[2]
 OUT = ROOT / "data/sequences_full"
 # Tracked copy; the data/ original is not in git. Same rows, same columns.
 MANIFEST = ROOT / "reports/E07/cohort_manifest.csv"
-RAW_DIRS = (ROOT / "data/vitaldb_development300/raw", ROOT / "data/vitaldb_full/raw")
+RAW_DIRS = (ROOT / "data/vitaldb_full/raw",)  # đã gộp raw development300 vào đây
 
 
 def build_one(record):

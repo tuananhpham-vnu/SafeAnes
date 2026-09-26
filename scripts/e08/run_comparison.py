@@ -413,7 +413,7 @@ def render():
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    parser.add_argument("--dataset", choices=DATASETS, default="development300")
+    parser.add_argument("--dataset", choices=DATASETS, default="full")
     parser.add_argument("--tabm", choices=TABM_MODES, default="frozen")
     parser.add_argument("--render-only", action="store_true")
     args = parser.parse_args()

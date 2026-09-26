@@ -62,7 +62,7 @@ Trong [code TimesNet](https://github.com/thuml/Time-Series-Library/blob/main/mod
 
 Repo Zhu được rà soát có mặc định depth/width/head không khớp mô tả bài. `transformer_model.py` truyền tensor dạng batch/time/feature nhưng `TransformerEncoderLayer` không chỉ định `batch_first=True`. **Suy luận từ code:** có nguy cơ attention chạy theo trục batch nếu không có bước chuyển trục tương ứng. Cần xác nhận tác giả hoặc tái triển khai kiểm chứng; không gọi code đó là mô hình đã tái lập. Danh sách file gốc không thấy LICENSE tại thời điểm kiểm tra; chưa xác minh quyền tái phân phối toàn repo. [Nguồn code](https://github.com/ShouqiangZhu/IOH_Transformer).
 
-Implementation `advanced_models.py` là bản nhỏ viết cho input và loss của dự án; không nhập nguyên các repository bên ngoài. Thông số khác paper được khóa trong [kế hoạch E03 (v0.2)](versions/V0_3_PLAN.md). Ensemble bốn kiến trúc là thiết kế thí nghiệm UC04, không gán cho tác giả InceptionTime hoặc TimesNet.
+Implementation `advanced_models.py` là bản nhỏ viết cho input và loss của dự án; không nhập nguyên các repository bên ngoài. Thông số khác paper được khóa trong kế hoạch E03 (v0.2) (đã xóa). Ensemble bốn kiến trúc là thiết kế thí nghiệm UC04, không gán cho tác giả InceptionTime hoặc TimesNet.
 
 ### Giới hạn và lần tra cứu sau
 
@@ -101,5 +101,5 @@ Tra cứu ngày 2026-09-17 qua Firecrawl Research và trang gốc. Đây là rà
 
 Risk đã calibration có thể tập trung trong khoảng nhỏ. Lưới validation quantile bổ sung ứng viên vào lưới cũ, giữ ngân sách FA/giờ và alarm policy. Lưới hữu hạn 201 quantile vẫn không đảm bảo tối ưu toàn bộ ngưỡng; validation nhỏ cũng có nguy cơ overfit. Mọi thay đổi recall ở cùng predictions là tác động operating point, không phải AUROC tốt lên.
 
-Thiết kế chạy thật: [V0_4_PLAN](versions/V0_4_PLAN.md). Kết quả: [báo cáo](../reports/v0_4/REPORT.md).
+Thiết kế chạy thật: V0_4_PLAN (đã xóa). Kết quả: báo cáo (đã xóa).
 

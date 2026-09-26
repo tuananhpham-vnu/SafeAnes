@@ -1,0 +1,9 @@
+bước,số ca
+Tất cả ca VitalDB,6388
+Loại: not_known_adult,-57
+Loại: not_general_anesthesia,-342
+Loại: insufficient_duration,-133
+Loại: missing_arterial_map,-2230
+Đủ điều kiện (eligible),3626
+  trong đó global test (khóa),516
+  phạm vi phân tích outcome,3110

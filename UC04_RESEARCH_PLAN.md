@@ -1,10 +1,10 @@
 # SafeAnes UC04 — Kế hoạch nghiên cứu và triển khai trên Kaggle T4 16 GB
 
-**Quy ước phát hành cập nhật:** toàn bộ công việc chưa push hiện tại được gộp vào **v0.2**; mỗi lần push mới tăng version. Các nhãn v0.3/v0.4 cũ tương ứng đợt thí nghiệm E03/E04, không phải release riêng. E04 đã chạy CatBoost ba seed và ablation ngưỡng; E05 tiếp tục mở rộng 300 ca theo [plan](docs/experiments/E05_PLAN.md). Xem [quy ước và kết quả từng đợt](README.md#release).
+**Quy ước phát hành cập nhật:** toàn bộ công việc chưa push hiện tại được gộp vào **v0.2**; mỗi lần push mới tăng version. Các nhãn v0.3/v0.4 cũ tương ứng đợt thí nghiệm E03/E04, không phải release riêng. E04 đã chạy CatBoost ba seed và ablation ngưỡng; E05 tiếp tục mở rộng 300 ca theo plan (đã xóa). Xem [quy ước và kết quả từng đợt](README.md#release).
 
 Ngày tra cứu/cập nhật: 17/09/2026. Phạm vi: dự báo sớm tụt huyết áp trong mổ, hiệu chỉnh xác suất, đánh giá cảnh báo và lộ trình nghiên cứu nguyên nhân. Phiên bản 0.2 đã triển khai pipeline numeric, baseline, TCN/Transformer, calibration, checkpoint/resume và báo cáo/phát lại ca. Thực nghiệm hiện dùng pilot VitalDB trên CPU; chưa có benchmark T4/Kaggle hoặc nghiệm thu hiệu năng. Xem [trạng thái và phần còn thiếu ở mục 13](UC04_RESEARCH_PLAN.md#13-trạng-thái-bàn-giao-và-các-mốc-còn-thiếu).
 
-Tài liệu thực thi: [các bước triển khai](docs/IMPLEMENTATION_STEPS.md), [runbook và lệnh chạy](docs/SEQUENCE_RUNBOOK.md), [nguồn gắn với code](docs/SOURCES.md), [protocol](docs/PROTOCOL.md), [model card](docs/MODEL_CARD.md), [data card](docs/DATA_CARD.md). Kết quả đo: [baseline](reports/PILOT_BASELINE.md), [TCN](reports/tcn_v1/REPORT.md), [Transformer](reports/transformer_v1/REPORT.md); [biên bản kiểm thử và thực nghiệm](reports/IMPLEMENTATION_VALIDATION.md).
+Tài liệu thực thi: [các bước triển khai](docs/IMPLEMENTATION_STEPS.md), [runbook và lệnh chạy](docs/SEQUENCE_RUNBOOK.md), [nguồn gắn với code](docs/SOURCES.md), [protocol](docs/PROTOCOL.md), [model card](docs/MODEL_CARD.md), [data card](docs/DATA_CARD.md). Kết quả đo: baseline (đã xóa), TCN (đã xóa), Transformer (đã xóa); biên bản kiểm thử và thực nghiệm (đã xóa).
 
 ## 1. Hướng đề xuất
 
@@ -194,7 +194,7 @@ Ablation tối thiểu: MAP-only; numeric đa biến; +static; +mask/time-since;
 
 ## 9. Phân tách nguyên nhân và độ tin cậy
 
-UC04 trong tài liệu gốc gồm hai bài toán khác nhau: dự báo biến cố và gợi ý cơ chế. Nhánh nguyên nhân tiếp tục sau pipeline dự báo, với điều kiện dữ liệu/gán nhãn riêng.
+UC04 trong tài liệu gốc gồm hai bài toán khác nhau: dự báo biến cố và gợi ý cơ chế. Phương pháp đề xuất cụ thể (phân rã SV×HR×SVR từ waveform, weak supervision, chuẩn bạc EV1000, độ tin cậy nhiều tầng) và căn cứ EDA: [UC04_METHOD_PROPOSAL.md](docs/UC04_METHOD_PROPOSAL.md), [EDA](reports/EDA/REPORT.md). Nhánh nguyên nhân tiếp tục sau pipeline dự báo, với điều kiện dữ liệu/gán nhãn riêng.
 
 | Mốc | Đầu ra | Dữ liệu / cách kiểm chứng |
 |---|---|---|
@@ -277,13 +277,13 @@ output: Vietnamese research and implementation plan
 
 ## 13. Trạng thái bàn giao và các mốc còn thiếu
 
-Cập nhật đợt **E03 trong v0.2**: Inception-style CNN, TimesNet và ensemble theo [review](docs/SOURCES.md#review-e03), [plan lưu trữ](docs/versions/V0_3_PLAN.md), [báo cáo](reports/v0_3/REPORT.md). **E04** đã chạy CatBoost ba seed và ablation ngưỡng, có cải thiện từng chỉ tiêu nhưng chưa đạt mọi gate: [kết quả](reports/v0_4/REPORT.md#nhan-xet). **E05** mở rộng development và ablation; các experiment không tự tạo release mới. Xem [quy ước version](README.md#release).
+Cập nhật đợt **E03 trong v0.2**: Inception-style CNN, TimesNet và ensemble theo [review](docs/SOURCES.md#review-e03), plan lưu trữ (đã xóa), báo cáo (đã xóa). **E04** đã chạy CatBoost ba seed và ablation ngưỡng, có cải thiện từng chỉ tiêu nhưng chưa đạt mọi gate: kết quả (đã xóa). **E05** mở rộng development và ablation; các experiment không tự tạo release mới. Xem [quy ước version](README.md#release).
 
 Không đánh dấu toàn bộ nghiên cứu hoàn thành chỉ vì đã có code. Trạng thái dưới đây phân biệt sản phẩm đã triển khai với bằng chứng thực nghiệm còn cần bổ sung.
 
 | Hạng mục | Trạng thái | Bằng chứng / điều kiện còn thiếu |
 |---|---|---|
-| Pilot dữ liệu thật và provenance | Pilot 60 ca; E05 đã chạy 300 ca/297 bệnh nhân, 99.132 decision, 497 episode IOH | Raw hashes, manifest, quality; [E05](reports/E05/REPORT.md). |
+| Pilot dữ liệu thật và provenance | Pilot 60 ca; E05 đã chạy 300 ca/297 bệnh nhân, 99.132 decision, 497 episode IOH | Raw hashes, manifest, quality; E05 (đã xóa). |
 | Cohort đúng phạm vi kế hoạch | Đã đối chiếu nguồn và metadata E05 | VitalDB gốc mô tả non-cardiac; kiểm kê chuyên khoa và cờ tên thủ thuật; chưa adjudication lại mã thủ thuật độc lập. |
 | Baseline MAP/logistic/boosting | Đã chạy CPU | Baseline hiện chưa đạt mọi mục tiêu mục 8. |
 | Dataset chuỗi và TCN/Transformer | Đã triển khai và chạy pilot CPU | Cùng nhãn, vai trò bệnh nhân và evaluator; chưa phải phép đo T4. |

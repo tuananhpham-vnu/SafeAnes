@@ -14,7 +14,7 @@
 #
 # data/, reports/ and artifacts/ are git-ignored, so a fresh clone lacks the E07 inputs. Upload them as a
 # dataset whose layout mirrors the repo (data/vitaldb_full/csv_cases, reports/E07/cohort_manifest.csv,
-# data/development300/dataset.json, and artifacts/E06 for TABM=frozen); the script finds it under
+# data/vitaldb_full/dataset.json, and artifacts/E06 for TABM=frozen); the script finds it under
 # /kaggle/input automatically, or set E08_INPUT=/path/to/that/folder.
 #
 # Interrupted or crashed? Run the same command again: finished methods reload from artifacts/E08/cache/.
@@ -35,7 +35,7 @@ export PYTHONPATH="src${SEP}.local_deps${PYTHONPATH:+${SEP}${PYTHONPATH}}"
 export PYTHONIOENCODING=utf-8
 
 link_inputs() {
-  for rel in data/vitaldb_full/csv_cases data/vitaldb_full/cases reports/E07/cohort_manifest.csv data/development300/dataset.json artifacts/E06; do
+  for rel in data/vitaldb_full/csv_cases data/vitaldb_full/cases reports/E07/cohort_manifest.csv data/vitaldb_full/dataset.json artifacts/E06; do
     if [ ! -e "$rel" ] && [ -e "$1/$rel" ]; then
       mkdir -p "$(dirname "$rel")" && ln -s "$1/$rel" "$rel" && echo "liên kết $rel -> $1/$rel"
     fi
@@ -48,7 +48,7 @@ elif [ ! -e data/vitaldb_full/csv_cases ] && [ -d /kaggle/input ]; then
   [ -z "$found" ] || link_inputs "${found%/data/vitaldb_full/csv_cases}"
 fi
 
-for path in reports/E07/cohort_manifest.csv data/development300/dataset.json; do
+for path in reports/E07/cohort_manifest.csv data/vitaldb_full/dataset.json; do
   [ -e "$path" ] || { echo "Thiếu $path — upload dữ liệu E07 (xem đầu file) hoặc đặt E08_INPUT." >&2; exit 1; }
 done
 [ -d data/vitaldb_full/csv_cases ] || [ -d data/vitaldb_full/cases ] || {

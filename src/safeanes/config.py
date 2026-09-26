@@ -54,3 +54,37 @@ class Protocol:
     def digest(self):
         return hashlib.sha256(json.dumps(asdict(self), sort_keys=True).encode()).hexdigest()
 
+
+
+# UC04 mechanism-related numeric tracks (EDA + cause branch). Grouped by the physiology they
+# inform; availability varies widely (e.g. EV1000 ~600 cases), see reports/EDA.
+UC04_TRACKS = {
+    "hemodynamic": [
+        "Solar8000/ART_MBP", "Solar8000/ART_SBP", "Solar8000/ART_DBP", "Solar8000/HR",
+        "Solar8000/PLETH_HR", "Solar8000/NIBP_MBP", "Solar8000/NIBP_SBP", "Solar8000/NIBP_DBP",
+        "Solar8000/CVP", "Solar8000/FEM_MBP", "Solar8000/BT", "Solar8000/PLETH_SPO2",
+    ],
+    "cardiac_output": [
+        "EV1000/SV", "EV1000/SVI", "EV1000/SVV", "EV1000/CO", "EV1000/CI", "EV1000/SVR",
+        "EV1000/SVRI", "EV1000/CVP", "EV1000/ART_MBP",
+        "Vigileo/SV", "Vigileo/SVI", "Vigileo/SVV", "Vigileo/CO", "Vigileo/CI",
+    ],
+    "anesthetic_depth": [
+        "BIS/BIS", "BIS/SQI", "BIS/SR", "Primus/MAC", "Primus/EXP_SEVO", "Primus/EXP_DES",
+        "Primus/FEN2O",
+        "Orchestra/PPF20_CE", "Orchestra/PPF20_CP", "Orchestra/PPF20_RATE", "Orchestra/PPF20_VOL",
+        "Orchestra/RFTN20_CE", "Orchestra/RFTN20_CP", "Orchestra/RFTN20_RATE", "Orchestra/RFTN20_VOL",
+        "Orchestra/RFTN50_CE", "Orchestra/RFTN50_RATE",
+    ],
+    "vasoactive": [
+        f"Orchestra/{drug}_{kind}" for drug in
+        ("PHEN", "NEPI", "EPI", "DOPA", "DOBU", "VASO", "NTG", "NPS", "PGE1", "DTZ", "ROC")
+        for kind in ("RATE", "VOL")
+    ],
+    "ventilation": [
+        "Solar8000/ETCO2", "Solar8000/RR_CO2", "Primus/ETCO2", "Primus/PEEP_MBAR",
+        "Primus/PIP_MBAR", "Primus/PPLAT_MBAR", "Primus/TV", "Primus/MV", "Primus/COMPLIANCE",
+    ],
+}
+WAVEFORM_TRACKS = {"art": "SNUADC/ART"}
+WAVEFORM_HZ = 500

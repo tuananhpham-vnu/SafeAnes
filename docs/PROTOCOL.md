@@ -56,6 +56,6 @@ CUDA dùng FP16 autocast và GradScaler; CPU dùng FP32. Checkpoint lưu model, 
 
 ## Các mốc còn thiếu trước nghiệm thu
 
-V0.3 bổ sung hai backbone Inception-style và TimesNet adaptation cùng ensemble bốn checkpoint. Protocol nhãn/eligibility/alarm không đổi. Ensemble trung bình **logits thô**, không trung bình các điểm đã qua calibrator riêng; trọng số đều được khóa trước chạy, rồi fit một calibrator chung bằng calibration patients. Không dùng nhãn validation để học trọng số ensemble và không dùng pilot_test để chọn thành viên. Chi tiết và nguồn tại [kế hoạch v0.3](versions/V0_3_PLAN.md), [review](SOURCES.md#review-e03) và [hướng dẫn version](../README.md#release).
+V0.3 bổ sung hai backbone Inception-style và TimesNet adaptation cùng ensemble bốn checkpoint. Protocol nhãn/eligibility/alarm không đổi. Ensemble trung bình **logits thô**, không trung bình các điểm đã qua calibrator riêng; trọng số đều được khóa trước chạy, rồi fit một calibrator chung bằng calibration patients. Không dùng nhãn validation để học trọng số ensemble và không dùng pilot_test để chọn thành viên. Chi tiết và nguồn tại kế hoạch v0.3 (đã xóa), [review](SOURCES.md#review-e03) và [hướng dẫn version](../README.md#release).
 
 Train/benchmark T4, waveform artifact detector, kiểm định ngoài, nhãn cơ chế và khuyến nghị điều trị chưa hoàn tất. Trước mở global final test: rà soát nhãn với chuyên gia, xác nhận cohort không tim, audit censored/exclusion, hoàn thiện exposure, chốt model/threshold/protocol/hash. Sửa sau khi mở test cần holdout mới hoặc công bố exploratory.

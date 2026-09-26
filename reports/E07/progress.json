@@ -1,0 +1,11 @@
+{
+  "execution": "E07b_csv_parity",
+  "total_metadata_cases": 6388,
+  "eligible_cases": 3626,
+  "completed_cases": 3626,
+  "errors": {},
+  "elapsed_seconds_this_run": 1673.5160000000033,
+  "updated_utc": "2026-09-19T02:32:52.362925+00:00",
+  "final_test_authorized": true,
+  "retuning": false
+}

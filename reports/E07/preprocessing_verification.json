@@ -1,0 +1,16 @@
+{
+  "cases": [
+    10,
+    41,
+    55,
+    66,
+    93
+  ],
+  "all_features_labels_eligibility_match_E05": true,
+  "tolerance": {
+    "rtol": 1e-10,
+    "atol": 1e-12
+  },
+  "dtype_note": "Per-case integer exposure equals float exposure after cohort CSV concatenation",
+  "tests_executed": false
+}

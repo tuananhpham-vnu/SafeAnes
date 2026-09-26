@@ -32,7 +32,7 @@ TABM_FIXED = "n_blocks=2, dropout=0.1, PLE 8 bins x 4, AdamW lr=0.002 wd=3e-4"  
 TABM_MODES = ("frozen", "retrain", "skip")
 META = ["caseid", "subjectid", "time", "eligible", "exposure_seconds", "y_300", "y_600"]
 ROLES = ("fit", "calibration", "validation")
-DATASETS = ("development300", "full")
+DATASETS = ("full",)  # development300 đã xóa; kết quả v2 giữ trong reports/E08
 # Full VitalDB, grouped by subject in E07; the global test group is never read.
 FULL_ROLES = {"development_seen": "fit", "unseen_train": "fit",
               "unseen_calibration": "calibration", "unseen_validation": "validation"}
@@ -95,14 +95,12 @@ class Context:
         return (self.cal_rows.eligible & self.cal_rows[f"y_{horizon}"].ge(0)).to_numpy()
 
 
-def load_context(root, dataset="development300"):
+def load_context(root, dataset="full"):
     root = Path(root)
-    meta = json.loads((root / "data/development300/dataset.json").read_text())
+    meta = json.loads((root / "data/vitaldb_full/dataset.json").read_text())
     protocol = Protocol(**{**meta["protocol"], "horizons_seconds": tuple(meta["protocol"]["horizons_seconds"])})
     features = [f for f in meta["features"] if not f.startswith("static_")]
-    if dataset == "development300":
-        (rows, X, events), missing = _development300(root, features), 0
-    elif dataset == "full":
+    if dataset == "full":
         rows, X, events, missing = _full_vitaldb(root, features)
     else:
         raise ValueError(f"Unknown dataset {dataset}; expected one of {DATASETS}")
@@ -120,19 +118,6 @@ def load_context(root, dataset="development300"):
 
 def _usable_for_fit(frame):
     return frame[frame.eligible & frame[["y_300", "y_600"]].ge(0).any(axis=1)]
-
-
-def _development300(root, features):
-    data = root / "data/development300"
-    roles = pd.read_csv(root / "artifacts/E05/roles.csv")
-    frame = pd.read_csv(data / "windows.csv.gz").merge(roles, on=["caseid", "subjectid"], validate="many_to_one")
-    rows, X = {}, {}
-    for role in ROLES:
-        part = frame[frame.role.eq(role)]
-        if role == "fit":
-            part = _usable_for_fit(part)
-        rows[role], X[role] = part[META], part[features].to_numpy(dtype=float, copy=True)
-    return rows, X, pd.read_csv(data / "events.csv")
 
 
 def _full_vitaldb(root, features):

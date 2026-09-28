@@ -47,6 +47,13 @@ else
   run
 fi
 
+echo "== Đặc trưng cửa sổ W = 30/60/90/120 s (mục 2.1.4, 2.2.2) =="
+python -W ignore scripts/data/build_features.py --prep "$OUT" --workers "$WORKERS" 2>&1 | tee -a "$LOG"
+
+echo "== Kiểm chứng SV/CO/SVR/PPV ước lượng với EV1000 =="
+python -W ignore scripts/data/validate_proxies_ev1000.py --prep "$OUT" 2>&1 | tee -a "$LOG"
+
 echo "== Ví dụ output =="
 PREP="$OUT" bash scripts/inspect_prep_v1.sh --rows 3 | tee -a "$LOG"
-du -sh "$OUT"/cases "$OUT"/wave100 2>/dev/null || true
+PREP="$OUT" bash scripts/data/describe_prep_data.sh | tee -a "$LOG"
+du -sh "$OUT"/cases "$OUT"/wave100 "$OUT"/features 2>/dev/null || true

@@ -156,8 +156,24 @@ def predict_case(path, record, models, thresholds):
             "audit": data["audit"], "group": record["evaluation_group"], "preprocessed_sha256": sha(Path(path))}
 
 
+ARCHIVED_INPUTS = (ROOT / "data/vitaldb_development300/cohort_manifest.csv", ROOT / "artifacts/E05",
+                   ROOT / "artifacts/E06/roles.csv", ROOT / "artifacts/E06/validation_selection.json")
+
+
+def require_archived_inputs():
+    """E07 re-scores the frozen E05/E06 models; those inputs were removed on 24/09/2026 and the
+    E05 models were never committed, so this run cannot be reproduced. Results stay in reports/E07.
+    build_one (used by scripts/e08/build_missing_cases.py) does not need them."""
+    missing = [str(p.relative_to(ROOT)) for p in ARCHIVED_INPUTS if not p.exists()]
+    if missing:
+        raise SystemExit("E07 chỉ còn giá trị tham khảo — thiếu input đã xóa khi dọn repo 24/09/2026:\n  "
+                         + "\n  ".join(missing) + "\nKết quả E07 vẫn ở reports/E07. Tiền xử lý mới: "
+                         "bash scripts/data/run_preprocess_data.sh")
+
+
 def main():
     import joblib
+    require_archived_inputs()
     manifest, selected = register()
     models, thresholds = models_and_thresholds()
     records = {int(r["caseid"]): r for r in selected.to_dict("records")}

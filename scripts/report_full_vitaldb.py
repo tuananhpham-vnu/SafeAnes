@@ -46,6 +46,10 @@ def paired(a, b):
 
 
 def main():
+    import sys
+    sys.path.insert(0, str(ROOT / "scripts"))
+    from evaluate_full_vitaldb import require_archived_inputs
+    require_archived_inputs()
     meta = pd.read_csv(REPORT / "cohort_manifest.csv")
     selected = meta[meta.eligible]
     correction = json.loads((OUT / "registration.json").read_text())["identity"]

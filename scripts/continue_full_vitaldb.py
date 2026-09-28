@@ -45,6 +45,7 @@ def infer_one(path, record):
 
 
 def main():
+    base.require_archived_inputs()
     manifest, selected = base.register()
     for folder in (OUT / "cases", DATA / "csv_cases"):
         folder.mkdir(parents=True, exist_ok=True)

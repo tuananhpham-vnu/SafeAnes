@@ -1,0 +1,2 @@
+model,window,horizon,mean_p_validation,positive_rate_validation,calibrator
+map_threshold,,600,0.07728441682148446,0.07724104508459598,"{'method': 'platt_on_score', 'mean': -84.96333773067946, 'std': 12.288970923320893, 'a': 1.0579661283073014, 'b': -2.863073768252056}"

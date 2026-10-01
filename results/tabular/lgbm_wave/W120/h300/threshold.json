@@ -1,0 +1,251 @@
+{
+  "threshold": 0.16,
+  "budget_not_met": false,
+  "event_sensitivity": 0.635,
+  "false_alarms_per_hour": 0.9930518873674373,
+  "alarm_ppv": 0.29364161849710985,
+  "n_candidates": 299,
+  "fa_monotone": false,
+  "curve": [
+    {
+      "threshold": 0.0011474835765882415,
+      "event_sensitivity": 0.3675,
+      "false_alarms_per_hour": 1.6057860306367073,
+      "alarm_ppv": 0.12951541850220263
+    },
+    {
+      "threshold": 0.0024516515674487824,
+      "event_sensitivity": 0.3775,
+      "false_alarms_per_hour": 2.5988379180041448,
+      "alarm_ppv": 0.08628571428571429
+    },
+    {
+      "threshold": 0.0028844854004227167,
+      "event_sensitivity": 0.385,
+      "false_alarms_per_hour": 3.2196985087968795,
+      "alarm_ppv": 0.07213114754098361
+    },
+    {
+      "threshold": 0.003351687684466865,
+      "event_sensitivity": 0.3925,
+      "false_alarms_per_hour": 3.6455243590264517,
+      "alarm_ppv": 0.06541666666666666
+    },
+    {
+      "threshold": 0.003819153460743073,
+      "event_sensitivity": 0.4075,
+      "false_alarms_per_hour": 4.006338629068303,
+      "alarm_ppv": 0.06202435312024353
+    },
+    {
+      "threshold": 0.004263596268106837,
+      "event_sensitivity": 0.4175,
+      "false_alarms_per_hour": 4.178619316565763,
+      "alarm_ppv": 0.06099342585829072
+    },
+    {
+      "threshold": 0.004798568359156793,
+      "event_sensitivity": 0.435,
+      "false_alarms_per_hour": 4.422412742269717,
+      "alarm_ppv": 0.06010362694300518
+    },
+    {
+      "threshold": 0.005314660910094287,
+      "event_sensitivity": 0.44,
+      "false_alarms_per_hour": 4.5313071390841495,
+      "alarm_ppv": 0.059379217273954114
+    },
+    {
+      "threshold": 0.005961359575298599,
+      "event_sensitivity": 0.4475,
+      "false_alarms_per_hour": 4.5751899557108615,
+      "alarm_ppv": 0.05978623914495658
+    },
+    {
+      "threshold": 0.006706062113909162,
+      "event_sensitivity": 0.4575,
+      "false_alarms_per_hour": 4.606070456300029,
+      "alarm_ppv": 0.060656281073914485
+    },
+    {
+      "threshold": 0.007467108808423726,
+      "event_sensitivity": 0.465,
+      "false_alarms_per_hour": 4.6532038519361265,
+      "alarm_ppv": 0.0610036077402427
+    },
+    {
+      "threshold": 0.008425977605914325,
+      "event_sensitivity": 0.485,
+      "false_alarms_per_hour": 4.596318719271871,
+      "alarm_ppv": 0.0641958967571145
+    },
+    {
+      "threshold": 0.009521182766429711,
+      "event_sensitivity": 0.4975,
+      "false_alarms_per_hour": 4.532932428588842,
+      "alarm_ppv": 0.06659973226238286
+    },
+    {
+      "threshold": 0.010497266319431405,
+      "event_sensitivity": 0.5025,
+      "false_alarms_per_hour": 4.435415058307261,
+      "alarm_ppv": 0.06860068259385665
+    },
+    {
+      "threshold": 0.012096514569516008,
+      "event_sensitivity": 0.505,
+      "false_alarms_per_hour": 4.323270082483442,
+      "alarm_ppv": 0.07058001397624039
+    },
+    {
+      "threshold": 0.014114396173806167,
+      "event_sensitivity": 0.535,
+      "false_alarms_per_hour": 4.150989394985982,
+      "alarm_ppv": 0.0773121387283237
+    },
+    {
+      "threshold": 0.01635340461299067,
+      "event_sensitivity": 0.5525,
+      "false_alarms_per_hour": 4.0534720247044005,
+      "alarm_ppv": 0.08139963167587477
+    },
+    {
+      "threshold": 0.019657117396337048,
+      "event_sensitivity": 0.59,
+      "false_alarms_per_hour": 3.8893177847304052,
+      "alarm_ppv": 0.0897679726131609
+    },
+    {
+      "threshold": 0.023473047527025302,
+      "event_sensitivity": 0.5975,
+      "false_alarms_per_hour": 3.7040347811954004,
+      "alarm_ppv": 0.0949166004765687
+    },
+    {
+      "threshold": 0.02839591830853958,
+      "event_sensitivity": 0.6375,
+      "false_alarms_per_hour": 3.509000040632238,
+      "alarm_ppv": 0.1056338028169014
+    },
+    {
+      "threshold": 0.03487251598864948,
+      "event_sensitivity": 0.655,
+      "false_alarms_per_hour": 3.2229490878062657,
+      "alarm_ppv": 0.11670378619153675
+    },
+    {
+      "threshold": 0.04188246788616161,
+      "event_sensitivity": 0.68,
+      "false_alarms_per_hour": 2.8946406078582747,
+      "alarm_ppv": 0.13248904042864101
+    },
+    {
+      "threshold": 0.05308744269432776,
+      "event_sensitivity": 0.685,
+      "false_alarms_per_hour": 2.558205680386819,
+      "alarm_ppv": 0.14826839826839827
+    },
+    {
+      "threshold": 0.06935148261025686,
+      "event_sensitivity": 0.725,
+      "false_alarms_per_hour": 2.1193775141197024,
+      "alarm_ppv": 0.18193224592220827
+    },
+    {
+      "threshold": 0.08664588513179197,
+      "event_sensitivity": 0.71,
+      "false_alarms_per_hour": 1.787818455162326,
+      "alarm_ppv": 0.20520231213872833
+    },
+    {
+      "threshold": 0.11124361547985348,
+      "event_sensitivity": 0.705,
+      "false_alarms_per_hour": 1.4838893177847305,
+      "alarm_ppv": 0.23598326359832636
+    },
+    {
+      "threshold": 0.1469693326998047,
+      "event_sensitivity": 0.665,
+      "false_alarms_per_hour": 1.10194628418187,
+      "alarm_ppv": 0.2817796610169492
+    },
+    {
+      "threshold": 0.18,
+      "event_sensitivity": 0.6,
+      "false_alarms_per_hour": 0.832148226402828,
+      "alarm_ppv": 0.3191489361702128
+    },
+    {
+      "threshold": 0.23,
+      "event_sensitivity": 0.485,
+      "false_alarms_per_hour": 0.5412214050627768,
+      "alarm_ppv": 0.3681214421252372
+    },
+    {
+      "threshold": 0.28,
+      "event_sensitivity": 0.385,
+      "false_alarms_per_hour": 0.3559384015277722,
+      "alarm_ppv": 0.4128686327077748
+    },
+    {
+      "threshold": 0.33264866796915316,
+      "event_sensitivity": 0.3,
+      "false_alarms_per_hour": 0.1999106090772419,
+      "alarm_ppv": 0.49382716049382713
+    },
+    {
+      "threshold": 0.4,
+      "event_sensitivity": 0.15,
+      "false_alarms_per_hour": 0.07963918572995815,
+      "alarm_ppv": 0.5504587155963303
+    },
+    {
+      "threshold": 0.47,
+      "event_sensitivity": 0.07,
+      "false_alarms_per_hour": 0.029255211084474424,
+      "alarm_ppv": 0.6086956521739131
+    },
+    {
+      "threshold": 0.54,
+      "event_sensitivity": 0.0125,
+      "false_alarms_per_hour": 0.014627605542237212,
+      "alarm_ppv": 0.35714285714285715
+    },
+    {
+      "threshold": 0.62,
+      "event_sensitivity": 0.0,
+      "false_alarms_per_hour": 0.006501158018772094,
+      "alarm_ppv": 0.0
+    },
+    {
+      "threshold": 0.69,
+      "event_sensitivity": 0.0,
+      "false_alarms_per_hour": 0.0,
+      "alarm_ppv": NaN
+    },
+    {
+      "threshold": 0.76,
+      "event_sensitivity": 0.0,
+      "false_alarms_per_hour": 0.0,
+      "alarm_ppv": NaN
+    },
+    {
+      "threshold": 0.84,
+      "event_sensitivity": 0.0,
+      "false_alarms_per_hour": 0.0,
+      "alarm_ppv": NaN
+    },
+    {
+      "threshold": 0.91,
+      "event_sensitivity": 0.0,
+      "false_alarms_per_hour": 0.0,
+      "alarm_ppv": NaN
+    },
+    {
+      "threshold": 0.99,
+      "event_sensitivity": 0.0,
+      "false_alarms_per_hour": 0.0,
+      "alarm_ppv": NaN
+    }
+  ]
+}

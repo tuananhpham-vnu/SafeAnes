@@ -1,0 +1,2 @@
+model,window,horizon,mean_p_validation,positive_rate_validation,calibrator
+lgbm_numeric,120,1800,0.20812000686283025,0.2101523536243766,"{'method': 'platt_on_score', 'mean': -1.6191811352635066, 'std': 1.0542452391357584, 'a': 0.9920880565961094, 'b': -1.587051350900459}"

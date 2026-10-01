@@ -1,0 +1,17 @@
+{
+  "scale": "logit",
+  "sd_tertiles": [
+    0.036229321590845666,
+    0.05325979098064468
+  ],
+  "seeds": 5,
+  "check": {
+    "deciles_compared": 10,
+    "deciles_low_worse_calibration": 4,
+    "pooled_calibration_error_low": 0.003100958378362638,
+    "pooled_calibration_error_high": 0.002655285116103671,
+    "pooled_brier_low": 0.04021470621449771,
+    "pooled_brier_high": 0.024471458689912583,
+    "passed": false
+  }
+}

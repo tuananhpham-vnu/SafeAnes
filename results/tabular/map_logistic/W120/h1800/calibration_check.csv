@@ -1,0 +1,2 @@
+model,window,horizon,mean_p_validation,positive_rate_validation,calibrator
+map_logistic,120,1800,0.20671323088541405,0.2101523536243766,"{'method': 'platt_on_score', 'mean': -1.568272035007977, 'std': 1.0000586530598792, 'a': 0.8327191754432194, 'b': -1.509584815446397}"

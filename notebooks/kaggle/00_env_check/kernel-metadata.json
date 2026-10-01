@@ -1,0 +1,17 @@
+{
+  "id": "datnguyen31112/uc04-v2-00-env-check",
+  "title": "uc04-v2-00-env-check",
+  "code_file": "00_env_check.ipynb",
+  "language": "python",
+  "kernel_type": "notebook",
+  "is_private": true,
+  "enable_gpu": false,
+  "enable_internet": true,
+  "dataset_sources": [
+    "datnguyen31112/uc04-code",
+    "datnguyen31112/uc04-samples-v2",
+    "datnguyen31112/uc04-prep-v1"
+  ],
+  "kernel_sources": [],
+  "competition_sources": []
+}

@@ -1,0 +1,35 @@
+{
+  "step": "train_tabular",
+  "created_utc": "2026-09-29T09:19:15+00:00",
+  "config_source": "D:\\SafeAnes\\uc04\\configs\\uc04_v2.json",
+  "config_digest": "4c488a7fec10ce2ab39c4e960bcbc30e7ba560a8acc23b3d1286eabb8af78c2e",
+  "config_sections": "all_result_sections",
+  "git": {
+    "commit": "30c7021ec8e5c4d9268563e20eee893f36180b7e",
+    "dirty": false,
+    "dirty_paths": []
+  },
+  "packages": {
+    "python": "3.11.9",
+    "numpy": "2.4.6",
+    "pandas": "3.0.6",
+    "pyarrow": "25.0.1",
+    "scipy": "1.17.1",
+    "scikit-learn": "1.9.1",
+    "joblib": "1.6.0",
+    "lightgbm": "4.7.0",
+    "shap": "0.51.0",
+    "huggingface_hub": "2.0.0",
+    "numba": "0.67.0",
+    "torch": "2.14.0+cpu",
+    "uc04": "2.5.0"
+  },
+  "inputs": {
+    "samples_digest": "42cc8a8910fc3fc56ffaf7a86374e8c36ccc6666ee443c009686f59a12ff6b6f",
+    "qc.csv": "1e2fba676b780a627f26cdb44def6b98e430a5841e2e172dcb789d6b3b274b78",
+    "samples.json": "9b17751ad6fe0874274a5038545d36725f7de4bf0f53ff81e20d8369b83f2d2c"
+  },
+  "subset": null,
+  "bootstrap": 200,
+  "combo": "map_logistic_W30_h900"
+}

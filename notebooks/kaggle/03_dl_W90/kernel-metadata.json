@@ -1,0 +1,18 @@
+{
+  "id": "datnguyen31112/uc04-v2-03-dl-w90",
+  "title": "uc04-v2-03-dl-w90",
+  "code_file": "03_dl_W90.ipynb",
+  "language": "python",
+  "kernel_type": "notebook",
+  "is_private": true,
+  "enable_gpu": true,
+  "enable_internet": true,
+  "dataset_sources": [
+    "datnguyen31112/uc04-code",
+    "datnguyen31112/uc04-samples-v2",
+    "datnguyen31112/uc04-prep-v1"
+  ],
+  "kernel_sources": [],
+  "competition_sources": [],
+  "machine_shape": "NvidiaTeslaT4"
+}

@@ -1,0 +1,10 @@
+{
+  "w_star": 120,
+  "mean_event_sensitivity_5_10min": {
+    "30.0": 0.639991134751773,
+    "60.0": 0.6521513002364066,
+    "90.0": 0.6481294326241135,
+    "120.0": 0.6602895981087471
+  },
+  "rule": "lgbm_wave, mean event sensitivity at 5 and 10 min on validation"
+}

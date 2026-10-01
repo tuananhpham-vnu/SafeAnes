@@ -1,0 +1,16 @@
+{
+  "id": "datnguyen31112/uc04-v2-03-dl-finalize",
+  "title": "uc04-v2-03-dl-finalize",
+  "code_file": "03_dl_finalize.ipynb",
+  "language": "python",
+  "kernel_type": "notebook",
+  "is_private": true,
+  "enable_gpu": false,
+  "enable_internet": true,
+  "dataset_sources": [
+    "datnguyen31112/uc04-code",
+    "datnguyen31112/uc04-samples-v2"
+  ],
+  "kernel_sources": [],
+  "competition_sources": []
+}

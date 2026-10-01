@@ -1,5 +1,5 @@
 {
-  "id": "datnguyen31112/uc04-v2-03-dl-w120",
+  "id": "dainn98s/uc04-v2-03-dl-w120",
   "title": "uc04-v2-03-dl-w120",
   "code_file": "03_dl_W120.ipynb",
   "language": "python",
@@ -8,7 +8,7 @@
   "enable_gpu": true,
   "enable_internet": true,
   "dataset_sources": [
-    "datnguyen31112/uc04-code",
+    "dainn98s/uc04-code",
     "datnguyen31112/uc04-samples-v2",
     "datnguyen31112/uc04-prep-v1"
   ],

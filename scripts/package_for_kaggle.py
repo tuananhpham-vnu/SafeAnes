@@ -5,7 +5,7 @@
 
 Reads data/samples_v2 (never writes to it) and writes, under dist/ (not committed):
   uc04-samples-v2.zip            every file of samples_v2, ZIP_STORED (parquet is already compressed)
-  uc04-code.zip                  git archive of HEAD + CODE_COMMIT (full HEAD sha)
+  uc04-code.zip                  git archive of HEAD (CODE_PATHS only) + CODE_COMMIT (full HEAD sha)
   kaggle/uc04-samples-v2/        staging copy of samples_v2 + dataset-metadata.json
   kaggle/uc04-code/              unpacked uc04-code.zip + dataset-metadata.json
   for_review/                    upload_manifest.json, norm_tabular.json, provenance.json, samples.json
@@ -32,6 +32,9 @@ from uc04.runtime import REPO_CONFIG
 ROOT = Path(__file__).resolve().parents[1]
 FORBIDDEN = ("data/*", "artifacts*", "*sealed*", "*.env", ".env", "*kaggle.json", "*token*", "*.pt", "*.joblib",
              "*.npz", "*.npy", "*.parquet")
+# what the Kaggle notebooks need; the repo also holds other projects, data/ and artifacts/
+CODE_PATHS = ("src/uc04", "scripts", "templates", "configs", "pyproject.toml", "requirements-lock.txt",
+              "requirements-lock.json")
 
 
 def git(*args: str, binary: bool = False):
@@ -62,7 +65,7 @@ def package_code(out: Path, user: str, head: str):
     """dist/uc04-code.zip (git archive of HEAD + CODE_COMMIT) and its staging folder.
     Returns (zip, staging dir, file names, failed) where failed is truthy if the package check failed."""
     c_zip = out / "uc04-code.zip"
-    archive = git("archive", "--format=zip", "HEAD", binary=True)
+    archive = git("archive", "--format=zip", "HEAD", "--", *CODE_PATHS, binary=True)
     with zipfile.ZipFile(io.BytesIO(archive)) as src, zipfile.ZipFile(c_zip, "w", zipfile.ZIP_DEFLATED) as dst:
         for info in src.infolist():
             if not info.is_dir():

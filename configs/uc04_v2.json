@@ -63,11 +63,11 @@
     "token_env": "HF_TOKEN"
   },
   "kaggle": {
-    "user": "datnguyen31112",
+    "user": "dainn98s",
     "prep_kernel_source": "dainn98s/safeanes",
     "code_dataset": "<KAGGLE_USER>/uc04-code",
-    "samples_dataset": "<KAGGLE_USER>/uc04-samples-v2",
-    "wave_dataset": "<KAGGLE_USER>/uc04-prep-v1",
+    "samples_dataset": "datnguyen31112/uc04-samples-v2",
+    "wave_dataset": "datnguyen31112/uc04-prep-v1",
     "wave_dataset_version": 1,
     "code_repo": "https://github.com/<org>/uc04.git",
     "tabular_machine": {"enable_gpu": false, "enable_internet": true},

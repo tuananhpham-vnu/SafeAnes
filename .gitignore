@@ -30,3 +30,4 @@ artifacts/E06/*
 !artifacts/E06/tabm_20260919/
 
 logs/
+.kaggle/

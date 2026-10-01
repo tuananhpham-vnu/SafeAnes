@@ -31,3 +31,8 @@ artifacts/E06/*
 
 logs/
 .kaggle/
+
+# secrets
+.env
+.env.*
+.env

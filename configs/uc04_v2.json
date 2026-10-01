@@ -55,7 +55,7 @@
   "hub": {
     "samples_repo": "<hf_user>/uc04-v2-samples",
     "samples_repo_type": "dataset",
-    "runs_repo": "yungdyo3112/uc04-v2-runs",
+    "runs_repo": "tuananhpham-vnu/uc04-v2-runs",
     "runs_repo_type": "model",
     "private": true,
     "push_min_interval_seconds": 600,

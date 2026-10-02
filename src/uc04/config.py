@@ -158,6 +158,7 @@ class Kaggle(Section):
     code_repo: str
     tabular_machine: Mapping
     dl_machine: Mapping
+    samples_json_sha256: str = ""  # sha256 of samples.json on Kaggle (scripts/kaggle_run.py)
 
 
 @dataclass(frozen=True)

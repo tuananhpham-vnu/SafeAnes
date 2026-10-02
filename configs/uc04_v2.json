@@ -69,7 +69,8 @@
     "samples_dataset": "datnguyen31112/uc04-samples-v2",
     "wave_dataset": "datnguyen31112/uc04-prep-v1",
     "wave_dataset_version": 1,
-    "code_repo": "https://github.com/<org>/uc04.git",
+    "code_repo": "https://github.com/tuananhpham-vnu/SafeAnes.git",
+    "samples_json_sha256": "9b17751ad6fe0874274a5038545d36725f7de4bf0f53ff81e20d8369b83f2d2c",
     "tabular_machine": {"enable_gpu": false, "enable_internet": true},
     "dl_machine": {"enable_gpu": true, "machine_shape": "NvidiaTeslaT4", "enable_internet": true}
   },

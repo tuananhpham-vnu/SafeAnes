@@ -1,13 +1,12 @@
-"""Library versions: lock on the local machine, enforce on Kaggle and in NB04.
+"""Library versions: recorded with every model, enforced in NB04.
 
-Models trained on Kaggle (.joblib, .pt) are loaded back on the local machine in
-NB04. A different scikit-learn / LightGBM / torch version can fail to load them or
-silently change predictions, so:
-- `requirements-lock.json` records the local versions (scripts/lock_requirements.py);
-- Kaggle notebooks install exactly those versions (torch: same version, CUDA build)
-  and `00_env_check` compares them;
-- NB04 compares the versions in each model's provenance with the local ones and
-  stops on any difference in `MODEL_CRITICAL`.
+requirements.txt only sets minimum versions (DEVIATIONS 40), so Kaggle runs use the
+image's versions. Models trained on Kaggle (.pt) are loaded back on the local machine
+in NB04, and a different scikit-learn / LightGBM / torch version can fail to load them
+or silently change predictions, so:
+- each run's provenance.json records the installed versions of `LOCKED`;
+- NB04 compares those with the local ones (scripts/env_check.py --provenance) and
+  stops on any difference in `MODEL_CRITICAL`: install the recorded versions first.
 """
 from __future__ import annotations
 

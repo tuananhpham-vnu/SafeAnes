@@ -81,7 +81,7 @@ def dataset_ids(cfg, user: str) -> dict[str, str]:
 
 
 # everything a Kaggle notebook executes: if none changed, notebooks may target an older code commit
-KAGGLE_RUNTIME_PATHS = ("src", "configs", "templates", "requirements-lock.txt", "requirements-lock.json",
+KAGGLE_RUNTIME_PATHS = ("src", "configs", "templates", "requirements.txt",
                         "pyproject.toml", "scripts/train_dl.py", "scripts/dl_finalize.py",
                         "scripts/kaggle_env_check.py", "scripts/env_check.py")
 

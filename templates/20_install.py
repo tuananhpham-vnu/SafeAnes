@@ -1,4 +1,4 @@
-# Install the locked library versions (Kaggle only; the local venv is the lock).
+# Install what is missing or older than requirements.txt (Kaggle only); the image's newer versions are kept.
 def sh(*cmd):
     """Run a command and stream its output into the notebook; raise on failure."""
     print("$", " ".join(map(str, cmd)), flush=True)
@@ -11,8 +11,5 @@ def sh(*cmd):
 
 
 if RUNTIME == "kaggle":
-    sh(sys.executable, "-m", "pip", "install", "-q", "-r", REPO / "requirements-lock.txt")
-    if NEEDS_TORCH:
-        torch_version = json.loads((REPO / "requirements-lock.json").read_text())["torch_base_version"]
-        sh(sys.executable, "-m", "pip", "install", "-q", f"torch=={torch_version}", "--index-url", TORCH_INDEX)
+    sh(sys.executable, "-m", "pip", "install", "-q", "-r", REPO / "requirements.txt")
     sh(sys.executable, "-m", "pip", "install", "-q", "--no-deps", "-e", REPO)

@@ -5,7 +5,7 @@
 - samples.json matches the config (samples_digest, qc.csv sha256);
 - if --prep is given (the Kaggle Dataset with wave100): its qc.csv sha256 equals
   input.qc_sha256, and wave100/ has one file per case with a waveform;
-- library versions vs requirements-lock.json (torch ignored here: CPU notebook);
+- library versions satisfy requirements.txt (torch ignored here: CPU notebook);
 - HF: if a token and runs_repo are set, writes runs/healthcheck_<utc>.json and
   pushes it; otherwise says that results will stay in the notebook output.
 Exit code 1 if any required check fails.
@@ -59,7 +59,7 @@ def main(argv=None) -> int:
         have = {int(p.stem) for p in (prep / "wave100").glob("*.npy")}
         report("wave100 files", need <= have, f"{len(have)} files, missing {len(need - have)}")
     r = subprocess.run([sys.executable, str(ROOT / "scripts" / "env_check.py"), "--ignore", "torch"])
-    report("library versions vs lock (torch ignored)", r.returncode == 0)
+    report("library versions >= requirements.txt (torch ignored)", r.returncode == 0)
 
     work = Path(args.work)
     try:

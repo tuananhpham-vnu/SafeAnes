@@ -1,4 +1,4 @@
-# Library versions must match requirements-lock.json (model-critical packages).
+# Library versions must satisfy requirements.txt; provenance.json records the exact ones.
 sh(sys.executable, REPO / "scripts" / "env_check.py", *([] if NEEDS_TORCH else ["--ignore", "torch"]))
 if NEEDS_TORCH:
     r = subprocess.run([sys.executable, "-c", "import torch; print(torch.__version__, torch.cuda.is_available(), "

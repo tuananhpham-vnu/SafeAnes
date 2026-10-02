@@ -14,8 +14,9 @@ Steps are the notebooks of make_kaggle_notebooks.py (00_env_check, 03_dl_smoke,
 03_dl_W60, 03_dl_W30, 03_dl_W120, 03_dl_W90, 03_dl_finalize) and run the same
 commands with the same checks as templates/: exactly one matching input per dataset,
 sha256 of samples.json (kaggle.samples_json_sha256) and of qc.csv (input.qc_sha256),
-HF_TOKEN and a real hub.runs_repo, locked library versions. The code version is the
-cloned git commit, which provenance.json records.
+HF_TOKEN and a real hub.runs_repo, library versions at or above requirements.txt.
+The code version is the cloned git commit and the library versions are those of the
+Kaggle image (upgraded where older than requirements.txt); provenance.json records both.
 """
 from __future__ import annotations
 
@@ -30,7 +31,6 @@ from pathlib import Path
 REPO = Path(__file__).resolve().parents[1]
 KAGGLE_INPUT = Path(os.environ.get("UC04_KAGGLE_INPUT", "/kaggle/input"))
 KAGGLE_WORKING = Path(os.environ.get("UC04_KAGGLE_WORKING", "/kaggle/working"))
-TORCH_INDEX = "https://download.pytorch.org/whl/cu126"
 
 
 def find_dirs(root: Path, marker: str, want_dir: str | None = None) -> list[Path]:
@@ -120,12 +120,10 @@ def main(argv=None) -> int:
     print(f"STEP={args.step}\nREPO={REPO} (commit {commit[:12]})\nSAMPLES={samples}\nPREP={prep}\nWORK={work}",
           flush=True)
 
-    # locked library versions (as templates/20_install.py and 30_check.py)
+    # libraries (as templates/20_install.py and 30_check.py): keep the Kaggle image's versions, including
+    # its CUDA build of torch, and install or upgrade only what is missing or older than requirements.txt
     if not args.skip_install:
-        sh(sys.executable, "-m", "pip", "install", "-q", "-r", REPO / "requirements-lock.txt")
-        if spec["torch"]:
-            torch_version = json.loads((REPO / "requirements-lock.json").read_text())["torch_base_version"]
-            sh(sys.executable, "-m", "pip", "install", "-q", f"torch=={torch_version}", "--index-url", TORCH_INDEX)
+        sh(sys.executable, "-m", "pip", "install", "-q", "-r", REPO / "requirements.txt")
         sh(sys.executable, "-m", "pip", "install", "-q", "--no-deps", "-e", REPO)
     sh(sys.executable, REPO / "scripts" / "env_check.py", *([] if spec["torch"] else ["--ignore", "torch"]))
 

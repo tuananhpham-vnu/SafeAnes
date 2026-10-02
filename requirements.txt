@@ -1,31 +1,37 @@
-# Mirrors pyproject.toml. Install core with `pip install -e .`, or use this
-# file for environments that need a flat requirements list (e.g. Kaggle).
-# Optional extras (boosting/catboost/deep/tabular/plots/dev) are listed below
-# and commented; uncomment what the run needs, or `pip install -e ".[tabular,dev]"`.
+# All dependencies of this repo (UC04 pipeline and the SafeAnes experiments), in one file.
+#
+#   pip install -r requirements.txt && pip install --no-deps -e .
+#
+# Only minimum versions: pip keeps a newer version that is already installed (e.g. the
+# Kaggle image, including its CUDA build of torch) and upgrades anything older.
+# The UC04 tests pass at these minimums (numpy 1.26, pandas 2.2, torch 2.3, ...) and at the
+# newest versions. The versions actually used by each run are recorded in its provenance.json.
 
-numpy>=1.26,<3
-pandas>=2.1,<3
-scikit-learn>=1.4,<2
-joblib>=1.3,<2
+# --- core (UC04 data, tabular models, evaluation)
+numpy>=1.26
+pandas>=2.2
+pyarrow>=15
+scipy>=1.11
+scikit-learn>=1.4
+joblib>=1.3
+lightgbm>=4.3
+shap>=0.45
+numba>=0.59
 
-# --- optional: boosting ---
-# lightgbm>=4.3,<5
+# --- deep learning (Conv1D + Transformer, TabM)
+torch>=2.3
+tabm>=0.0.3
+rtdl_num_embeddings>=0.0.12
 
-# --- optional: catboost ---
-# catboost>=1.2.10,<2
+# --- other SafeAnes experiments
+catboost>=1.2.10
+matplotlib>=3.8
 
-# --- optional: deep ---
-# torch>=2.6,<3
-# scipy>=1.11,<2
+# --- Hugging Face, Kaggle, notebooks
+huggingface_hub>=0.24
+kaggle>=1.6
+nbformat>=5.9
+psutil>=5.9
 
-# --- optional: tabular (TabM/E06) ---
-# torch>=2.6,<3
-# tabm==0.0.3
-# rtdl_num_embeddings==0.0.12
-# lightgbm>=4.3,<5
-
-# --- optional: plots ---
-# matplotlib>=3.8,<4
-
-# --- optional: dev ---
-# pytest>=8,<10
+# --- tests
+pytest>=8

@@ -33,8 +33,7 @@ ROOT = Path(__file__).resolve().parents[1]
 FORBIDDEN = ("data/*", "artifacts*", "*sealed*", "*.env", ".env", "*kaggle.json", "*token*", "*.pt", "*.joblib",
              "*.npz", "*.npy", "*.parquet")
 # what the Kaggle notebooks need; the repo also holds other projects, data/ and artifacts/
-CODE_PATHS = ("src/uc04", "scripts", "templates", "configs", "pyproject.toml", "requirements-lock.txt",
-              "requirements-lock.json")
+CODE_PATHS = ("src/uc04", "scripts", "templates", "configs", "pyproject.toml", "requirements.txt")
 
 
 def git(*args: str, binary: bool = False):

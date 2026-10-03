@@ -131,9 +131,10 @@ def main(argv=None) -> int:
     fill = {"{SAMPLES}": samples, "{WORK}": work, "{PREP}": prep}
     for step in spec["run"]:
         cmd = [fill.get(a, a) for a in step]
-        if "{INPUTS}" in cmd:
+        if "{INPUTS}" in cmd:  # no earlier-notebook inputs on Kaggle: drop the placeholder and its flag
             i = cmd.index("{INPUTS}")
-            cmd = cmd[:i] + cmd[i + 1:]
+            j = i - 1 if i > 0 and cmd[i - 1] == "--inputs" else i
+            cmd = cmd[:j] + cmd[i + 1:]
         sh(sys.executable, REPO / cmd[0], *cmd[1:], *(["--config", cfg_path] if args.config else []), *args.extra)
     print(f"{args.step} done (commit {commit[:12]})")
     return 0

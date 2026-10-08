@@ -20,7 +20,7 @@ import pandas as pd
 import torch
 from torch.utils.data import Dataset
 
-from .columns import numeric_cols
+from .columns import CONTEXT_COLS, numeric_cols
 from .io import read_json
 
 HORIZONS = (300, 600, 900, 1200, 1800)
@@ -68,14 +68,28 @@ class WaveReader:
         return np.stack([z, mask.astype(np.float32)])
 
 
-def tab_columns(W: int) -> list[str]:
-    return numeric_cols(W)
+# dl_context: missingness of these context columns is information (before incision / no earlier event),
+# so each gets a 0/1 "missing" flag next to its median-imputed value
+CONTEXT_FLAGS = ("f1a_min_since_opstart", "f1a_min_since_last_event")
 
 
-def tab_matrix(feats: pd.DataFrame, W: int, norm: dict, baseline_missing: np.ndarray) -> np.ndarray:
-    """[n, 67] float32: impute train median, z-score, append baseline_missing."""
-    cols = tab_columns(W)
-    out = np.empty((len(feats), len(cols) + 1), np.float32)
+def tab_columns(W: int, context: bool = False) -> list[str]:
+    return numeric_cols(W) + (list(CONTEXT_COLS) if context else [])
+
+
+def context_norm(labels: pd.DataFrame, feats: pd.DataFrame) -> dict:
+    """norm_tabular-style stats of the context columns on eligible train rows (main cohort, as build_samples)."""
+    from .samples import column_stats
+    return column_stats(lambda cols: feats[cols], list(CONTEXT_COLS), labels["eligible"].to_numpy(bool))
+
+
+def tab_matrix(feats: pd.DataFrame, W: int, norm: dict, baseline_missing: np.ndarray,
+               context: bool = False) -> np.ndarray:
+    """[n, 67] float32: impute train median, z-score, append baseline_missing.
+    With `context`: [n, 67 + 31 + 2], the context columns and the CONTEXT_FLAGS missing flags."""
+    cols = tab_columns(W, context)
+    flags = list(CONTEXT_FLAGS) if context else []
+    out = np.empty((len(feats), len(cols) + 1 + len(flags)), np.float32)
     for i, c in enumerate(cols):
         s = norm[c]
         x = feats[c].to_numpy(np.float64)
@@ -84,20 +98,40 @@ def tab_matrix(feats: pd.DataFrame, W: int, norm: dict, baseline_missing: np.nda
         std = s["std"] if s["std"] else 1.0
         x = np.where(np.isfinite(x), x, med)
         out[:, i] = (x - mean) / std
-    out[:, -1] = baseline_missing.astype(np.float32)
+    out[:, len(cols)] = baseline_missing.astype(np.float32)
+    for j, c in enumerate(flags):
+        out[:, len(cols) + 1 + j] = ~np.isfinite(feats[c].to_numpy(np.float64))
     return out
 
 
 def load_case_meta(samples: Path, sealed: Path | None = None, include_test: bool = False):
-    """(starts, masks, baseline_missing by caseid) from case_index / wave_mask."""
+    """(starts, masks, baseline_missing by caseid) from case_index / wave_mask.
+
+    `starts[c]` is the time of the first wave100 sample and `masks[c]` has one block per second from
+    there. Samples v3 (prep_v2) start each case at the beginning of the recording and ship
+    surgery_start.csv, while wave100 (prep_v1) starts at surgery_start: the wave origin is then
+    surgery_start and wave_mask is cut to begin there, so rows before incision read no wave
+    (padded and masked).
+    """
     idx = pd.read_parquet(Path(samples) / "case_index.parquet")
-    masks = dict(np.load(Path(samples) / "wave_mask.npz"))
+    masks = {int(k): v for k, v in np.load(Path(samples) / "wave_mask.npz").items()}
     if include_test:
         idx = pd.concat([idx, pd.read_parquet(Path(sealed) / "case_index_test.parquet")], ignore_index=True)
-        masks.update(dict(np.load(Path(sealed) / "wave_mask_test.npz")))
+        masks.update({int(k): v for k, v in np.load(Path(sealed) / "wave_mask_test.npz").items()})
     starts = dict(zip(idx.caseid.astype(int), idx.start.astype(float)))
     base_missing = dict(zip(idx.caseid.astype(int), (idx.baseline_source == 0)))
-    return starts, {int(k): v for k, v in masks.items()}, base_missing
+    ss_path = Path(samples) / "surgery_start.csv"
+    if ss_path.exists():
+        ss = pd.read_csv(ss_path)
+        origin = dict(zip(ss.caseid.astype(int), ss.surgery_start.astype(float)))
+        for c, s0 in starts.items():
+            off = origin[c] - s0
+            if off < 0 or off != int(off):
+                raise ValueError(f"case {c}: surgery_start {origin[c]} is not a whole second at or after start {s0}")
+            if c in masks:
+                masks[c] = masks[c][int(off):]
+            starts[c] = origin[c]
+    return starts, masks, base_missing
 
 
 def wave_stats(prep: Path) -> tuple[float, float]:
@@ -109,7 +143,7 @@ class RowSet:
     """Rows of one split for one window: identifiers, tab features, labels."""
 
     def __init__(self, labels: pd.DataFrame, feats: pd.DataFrame, W: int, norm: dict, base_missing: dict,
-                 train_rows: bool):
+                 train_rows: bool, context: bool = False):
         y = labels[[f"y_{h}" for h in HORIZONS]].to_numpy(np.int8)
         keep = labels["eligible"].to_numpy(bool)
         if train_rows:  # eligible and at least one known label
@@ -119,7 +153,7 @@ class RowSet:
         self.time = labels["time"].to_numpy(np.float64)[keep]
         self.y = y[keep]
         bm = np.array([base_missing.get(int(c), False) for c in self.caseid])
-        self.tab = tab_matrix(feats.iloc[self.index], W, norm, bm)
+        self.tab = tab_matrix(feats.iloc[self.index], W, norm, bm, context)
 
     def __len__(self) -> int:
         return len(self.caseid)

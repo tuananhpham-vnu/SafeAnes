@@ -21,12 +21,12 @@ from uc04.columns import WINDOWS
 from uc04.hub import hub_from_config
 from uc04.provenance import make_provenance
 from uc04.runtime import common_args, load_data, samples_inputs, setup
-from uc04.tabular import MODELS, TabularData, combo_dir, combo_name, model_columns, run_combo
+from uc04.tabular import BASE_MODELS, MODELS, TabularData, combo_dir, combo_name, model_columns, run_combo
 
 
 def main(argv=None) -> int:
     ap = common_args(argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter))
-    ap.add_argument("--models", nargs="+", default=list(MODELS), choices=MODELS)
+    ap.add_argument("--models", nargs="+", default=list(BASE_MODELS), choices=MODELS)
     ap.add_argument("--windows", nargs="+", type=int)
     ap.add_argument("--horizons", nargs="+", type=int)
     ap.add_argument("--bootstrap", type=int, help="bootstrap repeats (default: evaluation.bootstrap_repeats_validation)")

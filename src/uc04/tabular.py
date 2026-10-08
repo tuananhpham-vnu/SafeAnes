@@ -27,7 +27,13 @@ from .io import write_json, write_parquet
 from .metrics import Evaluator, lead_quantiles, row_metrics, summarize_counts
 from .thresholds import candidates, choose_threshold
 
-MODELS = ("map_threshold", "map_logistic", "lgbm_numeric", "lgbm_wave")
+BASE_MODELS = ("map_threshold", "map_logistic", "lgbm_numeric", "lgbm_wave")  # plan section 6 (NB02)
+# Added for samples v3, outside the config so the plan's config digest stays unchanged:
+# lgbm_context = lgbm_numeric + case-context columns of features_v5 (same LightGBM settings);
+# catboost_numeric = the E08 CatBoost (scripts/e08) on the 66 numeric columns.
+EXTRA_VERSIONS = {"lgbm_context": ("numeric", "context"), "catboost_numeric": ("numeric",)}
+CATBOOST_PARAMS = {"iterations": 300, "depth": 5, "learning_rate": 0.05, "l2_leaf_reg": 5}  # as E08
+MODELS = (*BASE_MODELS, *EXTRA_VERSIONS)
 SPLITS = ("train", "calibration", "validation")
 RESULT_COLUMNS = ["model", "window", "horizon", "status", "n_rows", "n_cases", "prevalence", "auroc", "auroc_lo",
                   "auroc_hi", "auprc", "auprc_lo", "auprc_hi", "brier", "ece", "threshold", "budget_not_met",
@@ -51,7 +57,7 @@ def model_columns(cfg, model: str, W: int) -> list[str]:
         return ["map_current"]
     if model == "map_logistic":
         return [c.replace("{W}", str(W)) for c in cfg.baselines.map_logistic["features"]]
-    groups = cfg.lightgbm.versions[model]
+    groups = EXTRA_VERSIONS[model] if model in EXTRA_VERSIONS else cfg.lightgbm.versions[model]
     return window_cols(W, groups)
 
 
@@ -121,6 +127,20 @@ class LGBM:
         return logit(self.model.predict_proba(X[self.columns])[:, 1])
 
 
+class CatBoost:
+    def __init__(self, columns, seed, threads=4):
+        from catboost import CatBoostClassifier
+        self.columns = list(columns)
+        self.model = CatBoostClassifier(**CATBOOST_PARAMS, random_seed=seed, thread_count=threads, verbose=False)
+
+    def fit(self, X, y):
+        self.model.fit(X[self.columns], y)
+        return self
+
+    def score(self, X):
+        return logit(self.model.predict_proba(X[self.columns])[:, 1])
+
+
 def make_model(cfg, model: str, W: int, columns=None, seed=None, extra=None):
     cols = columns or model_columns(cfg, model, W)
     if model == "map_threshold":
@@ -128,6 +148,8 @@ def make_model(cfg, model: str, W: int, columns=None, seed=None, extra=None):
     if model == "map_logistic":
         b = cfg.baselines.map_logistic
         return MapLogistic(cols, C=b["C"], max_iter=b["max_iter"])
+    if model.startswith("catboost"):
+        return CatBoost(cols, cfg.seed if seed is None else seed)
     return LGBM(cols, cfg.lightgbm.params, cfg.lightgbm.monotone_decreasing, W, cfg.seed if seed is None else seed,
                 extra)
 
@@ -185,8 +207,9 @@ def evaluate_probs(cfg, data: TabularData, h: int, prob_val: np.ndarray, bootstr
 
 
 def run_combo(cfg, model: str, data: TabularData, h: int, work: Path, *, bootstrap: int, provenance: dict,
-              log=print) -> tuple[dict, list[str]]:
-    """Train, calibrate, choose threshold, evaluate, write. Returns (result row, written paths)."""
+              log=print, fitted=None) -> tuple[dict, list[str]]:
+    """Train, calibrate, choose threshold, evaluate, write. Returns (result row, written paths).
+    `fitted` = (estimator with .score, Platt, status) skips training (models trained elsewhere, e.g. TabM)."""
     t0 = time.time()
     W = data.W
     name, rel = combo_name(model, W, h), combo_dir(model, W, h)
@@ -196,7 +219,7 @@ def run_combo(cfg, model: str, data: TabularData, h: int, work: Path, *, bootstr
     row = {"model": model, "window": None if model == "map_threshold" else W, "horizon": h,
            "alarm_rearm": cfg.evaluation.alarm_rearm,
            "config_digest": provenance["config_digest"], "git_commit": provenance["git"]["commit"]}
-    est, platt, status = fit_and_calibrate(cfg, model, data, h)
+    est, platt, status = fitted or fit_and_calibrate(cfg, model, data, h)
     if status != "ok":
         row["status"] = status
         log(f"  {name}: {status}")

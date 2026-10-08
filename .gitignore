@@ -32,6 +32,8 @@ artifacts/E06/*
 logs/
 .kaggle/
 
+hf_dl/
+
 # secrets
 .env
 .env.*

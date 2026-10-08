@@ -28,6 +28,7 @@ from uc04.dl_data import HORIZONS
 from uc04.hub import hub_from_config, on_kaggle
 from uc04.io import read_json, write_json, write_parquet
 from uc04.metrics import row_metrics
+from uc04.phases import evaluate_run
 from uc04.provenance import make_provenance, write_provenance
 from uc04.runtime import common_args, load_data, samples_inputs, setup
 from uc04.tabular import RESULT_COLUMNS, TabularData, _write_csv, evaluate_probs
@@ -35,10 +36,10 @@ from uc04.tabular import RESULT_COLUMNS, TabularData, _write_csv, evaluate_probs
 LOGIT_COLS = [f"logit_{h}" for h in HORIZONS]
 
 
-def seed_dirs(inputs: list[Path], W: int) -> dict[int, Path]:
+def seed_dirs(inputs: list[Path], W: int, kind: str = "dl") -> dict[int, Path]:
     out = {}
     for d in inputs:
-        for done in sorted((d / "artifacts" / "dl" / f"W{W}").glob("seed*/done.json")):
+        for done in sorted((d / "artifacts" / kind / f"W{W}").glob("seed*/done.json")):
             out.setdefault(int(done.parent.name[4:]), done.parent)
     return out
 
@@ -63,7 +64,16 @@ def main(argv=None) -> int:
     ap.add_argument("--inputs", nargs="+", help="work dirs written by train_dl.py (default: --work)")
     ap.add_argument("--windows", nargs="+", type=int)
     ap.add_argument("--bootstrap", type=int)
+    ap.add_argument("--run-name", default="current", help="name of this run in dl_version_comparison.csv")
+    ap.add_argument("--compare-with", nargs="+", metavar="NAME SAMPLES DIR",
+                    help="earlier DL run to compare with: name, its samples dir, dir(s) with its dl/W<W>/ "
+                         "val_predictions.parquet + threshold.json (e.g. v2 data/samples_v2 artifacts/v2/artifacts_hf)")
+    ap.add_argument("--context", action="store_true", help="finalize dl_context (artifacts/dl_context/)")
     args = ap.parse_args(argv)
+    kind, model_name = ("dl_context", "dl_context") if args.context else ("dl", "dl_conv_tf")
+    rep_sfx = "_context" if args.context else ""  # dl_validation_context.csv, ... next to the plan's files
+    if args.compare_with is not None and len(args.compare_with) < 3:
+        ap.error("--compare-with needs NAME SAMPLES DIR [DIR ...]")
     cfg, samples, work, push, subset = setup(args)
     kaggle = on_kaggle()
     # On Kaggle, per-seed logits come only from Hugging Face (DEVIATIONS 31); --inputs is for local runs.
@@ -77,17 +87,17 @@ def main(argv=None) -> int:
     results, checks, written = [], [], []
 
     for W in windows:
-        dirs = seed_dirs(inputs, W)
+        dirs = seed_dirs(inputs, W, kind)
         if kaggle and not hub.enabled:
             raise SystemExit("on Kaggle 03_dl_finalize reads logits from Hugging Face, but HF is not set up")
         if not dirs and hub.enabled:
             for s in cfg.dl.seeds:
                 for f in ("done.json", "logits_calibration.parquet", "logits_validation.parquet"):
                     try:
-                        hub.pull(f"dl/W{W}/seed{s}/{f}", local_dir=work / "_pull")
+                        hub.pull(f"{kind}/W{W}/seed{s}/{f}", local_dir=work / "_pull")
                     except Exception:
                         break
-            dirs = {int(p.parent.name[4:]): p.parent for p in (work / "_pull" / "dl" / f"W{W}").glob("seed*/done.json")}
+            dirs = {int(p.parent.name[4:]): p.parent for p in (work / "_pull" / kind / f"W{W}").glob("seed*/done.json")}
         if not dirs:
             print(f"W={W}: no finished seed, skipping")
             continue
@@ -107,7 +117,7 @@ def main(argv=None) -> int:
         p_seed = tb.predict(Lv)                                  # [seeds, n, 5]
         sd = np.full((len(lab_v), len(HORIZONS)), np.nan)
         sd[has] = p_seed.std(0)[pos_v[has]] if len(dirs) > 1 else np.nan
-        out = work / "artifacts" / "dl" / f"W{W}"
+        out = work / "artifacts" / kind / f"W{W}"
         out.mkdir(parents=True, exist_ok=True)
         for split, keys, L in (("calibration", keys_c, Lc), ("validation", keys_v, Lv)):
             df = keys.copy()
@@ -124,11 +134,11 @@ def main(argv=None) -> int:
             thresholds[str(h)] = thr
             write_parquet(out / f"case_metrics_h{h}.parquet", res.case_table)
             results.append({c: summary.get(c) for c in RESULT_COLUMNS} | {
-                "model": "dl_conv_tf", "window": W, "horizon": h, "status": "ok", "n_seeds": len(dirs),
+                "model": model_name, "window": W, "horizon": h, "status": "ok", "n_seeds": len(dirs),
                 "config_digest": prov["config_digest"], "git_commit": prov["git"]["commit"]})
             y = lab_v[f"y_{h}"].to_numpy()
             ok = lab_v["eligible"].to_numpy(bool) & (y != -1) & np.isfinite(prob)
-            checks.append({"model": "dl_conv_tf", "window": W, "horizon": h, "mean_p_validation": float(prob[ok].mean()),
+            checks.append({"model": model_name, "window": W, "horizon": h, "mean_p_validation": float(prob[ok].mean()),
                            "positive_rate_validation": float((y[ok] == 1).mean())})
             if len(dirs) > 1:
                 el = lab_v["eligible"].to_numpy(bool) & np.isfinite(sd[:, k])
@@ -146,17 +156,33 @@ def main(argv=None) -> int:
         write_json(out / "threshold.json", thresholds)
         write_parquet(out / "val_predictions.parquet", preds)
         write_provenance(out, {**prov, "window": W, "seeds": sorted(dirs)})
-        written.append(f"artifacts/dl/W{W}")
+        written.append(f"artifacts/{kind}/W{W}")
         if conf_rows:
-            _write_csv(work / "reports" / "dl_confidence" / f"W{W}.csv", pd.DataFrame(conf_rows))
-            written.append(f"reports/dl_confidence/W{W}.csv")
+            _write_csv(work / "reports" / f"dl_confidence{rep_sfx}" / f"W{W}.csv", pd.DataFrame(conf_rows))
+            written.append(f"reports/dl_confidence{rep_sfx}/W{W}.csv")
 
     if not results:
         print("no window had finished seeds", file=sys.stderr)
         return 1
-    _write_csv(work / "reports" / "dl_validation.csv", pd.DataFrame(results)[["n_seeds", *RESULT_COLUMNS]])
-    _write_csv(work / "reports" / "calibration_check_dl.csv", pd.DataFrame(checks))
-    written += ["reports/dl_validation.csv", "reports/calibration_check_dl.csv"]
+    _write_csv(work / "reports" / f"dl_validation{rep_sfx}.csv", pd.DataFrame(results)[["n_seeds", *RESULT_COLUMNS]])
+    _write_csv(work / "reports" / f"calibration_check_dl{rep_sfx}.csv", pd.DataFrame(checks))
+    written += [f"reports/dl_validation{rep_sfx}.csv", f"reports/calibration_check_dl{rep_sfx}.csv"]
+
+    # by phase (pre-incision / surgery) and against an earlier run, e.g. samples v2 (uc04.phases)
+    E = cfg.evaluation
+    cmp_rows = [r for r in evaluate_run(args.run_name, samples, [work], E, kinds=("dl",), subset=subset)
+                if r["model"] == model_name]
+    if args.compare_with:
+        name, other_samples, *dirs = args.compare_with
+        cmp_rows += evaluate_run(name, Path(other_samples), dirs, E, kinds=("dl",))
+    cmp = pd.DataFrame(cmp_rows)
+    _write_csv(work / "reports" / f"dl_version_comparison{rep_sfx}.csv", cmp)
+    written.append(f"reports/dl_version_comparison{rep_sfx}.csv")
+    for h in (300, 600):
+        t = cmp[cmp.horizon == h].pivot_table(index=["window", "phase"], columns="version",
+                                              values=["auroc", "event_sensitivity", "false_alarms_per_hour"])
+        print(f"\nh={h}: by phase{' vs ' + args.compare_with[0] if args.compare_with else ''}\n"
+              f"{t.round(3).to_string()}")
     hub.register(*written)
     hub.push(written, message="03 dl finalize")
     print(f"done in {time.time() - t0:.0f} s; outputs in {work}")

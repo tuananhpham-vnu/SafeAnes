@@ -83,6 +83,8 @@ def main(argv=None) -> int:
     ap.add_argument("--work", default=str(KAGGLE_WORKING / "work"))
     ap.add_argument("--config", help="config file (default: configs/uc04_v2.json of this clone)")
     ap.add_argument("--skip-install", action="store_true", help="libraries already installed in this session")
+    ap.add_argument("--no-hf", action="store_true",
+                    help="no HF_TOKEN needed: pass --no-push to the step, outputs stay in --work (no resume)")
     ap.add_argument("extra", nargs=argparse.REMAINDER, help="extra arguments for the step's script")
     args = ap.parse_args(argv)
     spec = NOTEBOOKS[args.step]
@@ -106,10 +108,17 @@ def main(argv=None) -> int:
     if spec["wave"]:
         prep = one(find_dirs(KAGGLE_INPUT, "qc.csv", want_dir="wave100"), "wave dataset (uc04-prep-v1)")
         got = sha256_of(prep / "qc.csv")
-        if got != cfg["input"]["qc_sha256"]:
-            raise SystemExit(f"qc.csv sha256 {got[:12]} != input.qc_sha256: wrong uc04-prep-v1 dataset")
+        want = cfg["kaggle"].get("wave_qc_sha256") or cfg["input"]["qc_sha256"]
+        if got != want:
+            raise SystemExit(f"qc.csv sha256 {got[:12]} != {want[:12]} (kaggle.wave_qc_sha256 or input.qc_sha256): "
+                             "wrong uc04-prep-v1 dataset")
 
-    if spec.get("hf", True):
+    extra = list(args.extra)
+    if args.no_hf:  # results stay in /kaggle/working (download the notebook output); no resume across sessions
+        print("--no-hf: not using Hugging Face; outputs stay in", args.work)
+        if spec.get("hf", True):
+            extra.append("--no-push")
+    elif spec.get("hf", True):
         if "<" in cfg["hub"]["runs_repo"]:
             raise SystemExit("hub.runs_repo in configs/uc04_v2.json is still a placeholder")
         os.environ[cfg["hub"]["token_env"]] = hf_token(cfg["hub"]["token_env"])  # never printed
@@ -135,7 +144,7 @@ def main(argv=None) -> int:
             i = cmd.index("{INPUTS}")
             j = i - 1 if i > 0 and cmd[i - 1] == "--inputs" else i
             cmd = cmd[:j] + cmd[i + 1:]
-        sh(sys.executable, REPO / cmd[0], *cmd[1:], *(["--config", cfg_path] if args.config else []), *args.extra)
+        sh(sys.executable, REPO / cmd[0], *cmd[1:], *(["--config", cfg_path] if args.config else []), *extra)
     print(f"{args.step} done (commit {commit[:12]})")
     return 0
 

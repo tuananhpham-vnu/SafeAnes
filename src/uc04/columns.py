@@ -32,6 +32,18 @@ def wave_cols(W: int, ppv: str = PPV_MODEL) -> list[str]:
             + [f"{ppv}_w{W}", f"bt_valid_frac_w{W}", f"bt_n_beats_w{W}"])
 
 
+# Case-context columns of samples v3 (features_v5/, group "f1a" of columns.json): monitor-only, causal
+# (multi-scale MAP/HR/PP/EtCO2 trends, MAP relative to the case's running median, minutes since induction /
+# incision, earlier events). Same for every W. f1a_min_since_opstart is missing before incision.
+CONTEXT_COLS = (
+    *[f"f1a_map_{st}_m{m}" for m in (5, 10, 15, 30) for st in ("mean", "min", "slope")],
+    "f1a_map_rel_case_median", "f1a_map_rel_max_m15", "f1a_min_70_80_m15",
+    *[f"f1a_{s}_{st}_m{m}" for s in ("hr", "pp", "etco2") for m in (5, 15) for st in ("mean", "slope")],
+    "f1a_min_since_opstart", "f1a_min_since_anestart", "f1a_n_prev_events", "f1a_min_since_last_event",
+)
+SIDE_PREFIXES = ("f1a_", "f1b_", "f1c_")  # columns read from <samples>/features_v5/ (uc04.loaders)
+
+
 def window_cols(W: int, groups: Sequence[str] = ("numeric", "waveform"), ppv: str = PPV_MODEL) -> list[str]:
     out: list[str] = []
     for g in groups:
@@ -39,6 +51,8 @@ def window_cols(W: int, groups: Sequence[str] = ("numeric", "waveform"), ppv: st
             out += numeric_cols(W)
         elif g == "waveform":
             out += wave_cols(W, ppv)
+        elif g == "context":
+            out += list(CONTEXT_COLS)
         else:
             raise ValueError(f"unknown column group {g!r}")
     return out

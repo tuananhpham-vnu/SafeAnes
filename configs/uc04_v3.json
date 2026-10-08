@@ -1,0 +1,129 @@
+{
+  "version": "uc04-v2",
+  "seed": 20260917,
+  "paths": {
+    "prep": "D:/SafeAnes/SafeAnes/data/prep_v1",
+    "samples": "data/samples_v3",
+    "sealed": "data/sealed_v3",
+    "artifacts": "artifacts",
+    "reports": "reports"
+  },
+  "input": {
+    "required": ["qc.csv", "cases", "features"],
+    "required_for_dl": ["wave100", "normalization.json"],
+    "forbidden_feature_prefixes": ["nibp", "cvp", "bis", "mac", "ppf", "rftn", "peep"],
+    "max_missing_case_fraction": 0.05,
+    "known_failed_cases": [4458, 6119, 6133, 6375],
+    "require_wave": true,
+    "min_map_coverage": 0.10,
+    "qc_sha256": "a836b0fe735625c8c8ef7706c261449de8df4c0a089de4ea2ba95ad32f192b88"
+  },
+  "features": {
+    "windows_seconds": [30, 60, 90, 120],
+    "cadence_seconds": 30,
+    "numeric_signals": ["map", "sbp", "dbp", "hr", "spo2", "etco2", "rr", "pp", "shock_index"],
+    "numeric_stats": ["mean", "std", "min", "max", "slope", "missing"],
+    "map_extra": ["map_drop_pct", "map_time_65_75_w{W}", "map_extrap_w{W}"],
+    "beat_signals": ["dpdt_max", "sys_area", "ejection_time", "notch_rel", "decay_tau", "sv", "co", "svr"],
+    "beat_stats": ["mean", "std", "slope"],
+    "beat_extra": ["ppv", "valid_frac", "n_beats"],
+    "recompute_ppv": true,
+    "ppv_subwindow_seconds": 30,
+    "ppv_min_beats": 5,
+    "ppv_max_period_cv": 0.10,
+    "ventilated_rr": [6, 40],
+    "ventilated_min_etco2": 10
+  },
+  "labels": {
+    "map_threshold": 65,
+    "event_seconds": 60,
+    "merge_gap_seconds": 120,
+    "horizons_seconds": [300, 600, 900, 1200, 1800],
+    "post_event_exclusion_seconds": 120,
+    "exclusion_reset": "event",
+    "max_map_missing_w120": 0.5,
+    "label_policy": "lenient",
+    "negative_rule": "possible_event",
+    "negative_max_unknown_fraction": 0.05,
+    "negative_max_unknown_run_seconds": 30,
+    "suspect_artefact_min_map": 30
+  },
+  "splits": {
+    "fit": "train", "calibration": "calibration", "validation": "validation", "test": "test",
+    "test_requires_lock": true
+  },
+  "hub": {
+    "samples_repo": "<hf_user>/uc04-v2-samples",
+    "samples_repo_type": "dataset",
+    "runs_repo": "tuananhpham-vnu/uc04-v3-runs",
+    "runs_repo_type": "model",
+    "private": true,
+    "push_min_interval_seconds": 600,
+    "forbidden_path_parts": ["sealed", "test"],
+    "token_env": "HF_TOKEN"
+  },
+  "kaggle": {
+    "user": "dainn98s",
+    "prep_kernel_source": "dainn98s/safeanes",
+    "code_dataset": "<KAGGLE_USER>/uc04-code",
+    "samples_dataset": "datnguyen31112/safeanes-v3",
+    "wave_dataset": "datnguyen31112/uc04-prep-v1",
+    "wave_dataset_version": 1,
+    "code_repo": "https://github.com/tuananhpham-vnu/SafeAnes.git",
+    "samples_json_sha256": "c58da318908b7ea2e775b281d48512a141c887afa665731f48008e894462c75d",
+    "wave_qc_sha256": "1e2fba676b780a627f26cdb44def6b98e430a5841e2e172dcb789d6b3b274b78",
+    "tabular_machine": {"enable_gpu": false, "enable_internet": true},
+    "dl_machine": {"enable_gpu": true, "machine_shape": "NvidiaTeslaT4", "enable_internet": true}
+  },
+  "baselines": {
+    "map_threshold": {"score": "neg_map_current"},
+    "map_logistic": {"features": ["map_current", "map_slope_w{W}", "map_std_w{W}"], "C": 1.0,
+                     "max_iter": 2000, "impute": "train_median", "scale": true}
+  },
+  "lightgbm": {
+    "versions": {"lgbm_numeric": ["numeric"], "lgbm_wave": ["numeric", "waveform"]},
+    "params": {"n_estimators": 500, "num_leaves": 7, "learning_rate": 0.03,
+               "min_child_samples": 150, "reg_lambda": 10, "n_jobs": 4, "verbosity": -1},
+    "missing": "native_nan",
+    "monotone_decreasing": ["map_current", "map_mean_w{W}", "map_min_w{W}"],
+    "shap_rows": 50000,
+    "confidence_seeds": [20260917, 20260918, 20260919, 20260920, 20260921],
+    "confidence_params": {"subsample": 0.8, "subsample_freq": 1, "colsample_bytree": 0.8}
+  },
+  "dl": {
+    "windows_seconds": [60, 30, 120, 90],
+    "seeds": [20260917, 20260918, 20260919, 20260920, 20260921],
+    "wave_hz": 100,
+    "tab_features": "numeric_w{W}",
+    "tab_extra_flags": ["baseline_missing"],
+    "conv": {"channels": [32, 64, 64], "kernel": 7, "strides": [2, 2, 5]},
+    "transformer": {"d_model": 64, "heads": 4, "layers": 2, "ff": 128, "dropout": 0.1, "positional": "sinusoidal"},
+    "tab_mlp": [64, 64],
+    "head_hidden": 64,
+    "ordered_horizons": true,
+    "optimizer": {"name": "adamw", "lr": 0.001, "weight_decay": 0.0001},
+    "batch_size": 256,
+    "max_epochs": 20,
+    "patience": 4,
+    "train_samples_per_epoch": 300000,
+    "amp": true,
+    "num_workers": 4
+  },
+  "calibration": {
+    "tabular": "platt_on_score",
+    "dl": "shared_temperature_and_bias"
+  },
+  "evaluation": {
+    "alarm_persistence": 2,
+    "alarm_cooldown_seconds": 300,
+    "alarm_rearm": "drop_below",
+    "fa_per_hour_budget": 1.0,
+    "threshold_candidates": 200,
+    "curve_points": 40,
+    "ece_bins": 10,
+    "early_lead_seconds": 300,
+    "bootstrap_unit": "subjectid",
+    "bootstrap_repeats_validation": 200,
+    "bootstrap_repeats_test": 1000
+  }
+}

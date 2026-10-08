@@ -26,7 +26,7 @@ from pathlib import Path
 
 import torch
 
-from uc04.dl_data import RowSet, WaveReader, load_case_meta, tab_columns, wave_stats
+from uc04.dl_data import RowSet, WaveReader, context_norm, load_case_meta, tab_columns, wave_stats
 from uc04.dl_train import RunSettings, train_one
 from uc04.hub import hub_from_config
 from uc04.io import read_json, write_json
@@ -86,7 +86,11 @@ def main(argv=None) -> int:
     ap.add_argument("--gpus", type=int, help="GPUs for parallel seeds (default: all visible; 1 = sequential)")
     ap.add_argument("--warn-only", action="store_true", help="deterministic algorithms in warn-only mode (DEVIATIONS 13)")
     ap.add_argument("--final-push-only", action="store_true")
+    ap.add_argument("--context", action="store_true",
+                    help="dl_context: tab branch also gets the case-context columns of features_v5 (samples v3); "
+                         "writes artifacts/dl_context/ instead of artifacts/dl/")
     args = ap.parse_args(argv)
+    kind = "dl_context" if args.context else "dl"
 
     cfg, samples, work, push, subset = setup(args)
     D = cfg.dl
@@ -98,17 +102,17 @@ def main(argv=None) -> int:
     if args.smoke:
         seeds = seeds[:1]
     if args.final_push_only:
-        rels = [f"artifacts/dl/W{W}/seed{s}" for s in seeds if (work / f"artifacts/dl/W{W}/seed{s}").exists()]
+        rels = [f"artifacts/{kind}/W{W}/seed{s}" for s in seeds if (work / f"artifacts/{kind}/W{W}/seed{s}").exists()]
         hub.register(*rels)
         hub.push(rels, message=f"dl W{W} final push")
         return 0
 
-    remote_done = hub.done_set("dl")
+    remote_done = hub.done_set(kind)
     n_gpus = torch.cuda.device_count() if args.device == "auto" else 0
     gpus = min(args.gpus or n_gpus, n_gpus)
     if not args.smoke and gpus > 1:
-        pending = [s for s in seeds if not (work / f"artifacts/dl/W{W}/seed{s}/done.json").exists()
-                   and f"dl/W{W}/seed{s}" not in remote_done]
+        pending = [s for s in seeds if not (work / f"artifacts/{kind}/W{W}/seed{s}/done.json").exists()
+                   and f"{kind}/W{W}/seed{s}" not in remote_done]
         if len(pending) > 1:
             workers = D.num_workers if args.num_workers is None else args.num_workers
             return run_parallel(list(sys.argv[1:] if argv is None else argv), pending, min(gpus, len(pending)),
@@ -125,32 +129,37 @@ def main(argv=None) -> int:
           f"{torch.cuda.get_device_name(0) if device.startswith('cuda') else ''} work={work}")
 
     t0 = time.time()
-    labels, feats, _ = load_data(samples, tab_columns(W), subset)
+    labels, feats, _ = load_data(samples, tab_columns(W, args.context), subset)
     norm = read_json(samples / "norm_tabular.json")["columns"]
+    if args.context:  # not in norm_tabular.json: same statistics, computed here on eligible train rows
+        norm = {**norm, **context_norm(labels["train"], feats["train"])}
     starts, masks, base_missing = load_case_meta(samples)
     mean, std = wave_stats(prep)
     reader = WaveReader(prep / "wave100", starts, masks, mean, std, hz=D.wave_hz)
-    rows = {"train": RowSet(labels["train"], feats["train"], W, norm, base_missing, train_rows=True),
-            "validation": RowSet(labels["validation"], feats["validation"], W, norm, base_missing, train_rows=True)}
+    rs = dict(norm=norm, base_missing=base_missing, context=args.context)
+    rows = {"train": RowSet(labels["train"], feats["train"], W, train_rows=True, **rs),
+            "validation": RowSet(labels["validation"], feats["validation"], W, train_rows=True, **rs)}
     for s in ("calibration", "validation"):
-        rows[f"{s}_all"] = RowSet(labels[s], feats[s], W, norm, base_missing, train_rows=False)
+        rows[f"{s}_all"] = RowSet(labels[s], feats[s], W, train_rows=False, **rs)
     print(f"rows: train {len(rows['train']):,}, validation {len(rows['validation']):,}; "
           f"prediction rows cal {len(rows['calibration_all']):,} val {len(rows['validation_all']):,} "
           f"({time.time() - t0:.0f} s)", flush=True)
 
     prov = make_provenance(cfg, "train_dl", inputs=samples_inputs(samples),
-                           extra={"window": W, "device": device, "subset": args.subset, "smoke": args.smoke})
+                           extra={"window": W, "device": device, "subset": args.subset, "smoke": args.smoke,
+                                  "model": "dl_context" if args.context else "dl_conv_tf",
+                                  "tab_dim": int(rows["train"].tab.shape[1])})
     for seed in seeds:
-        rel = f"artifacts/dl/W{W}/seed{seed}" if not args.smoke else f"artifacts/dl_smoke/W{W}/seed{seed}"
+        rel = f"artifacts/{kind}/W{W}/seed{seed}" if not args.smoke else f"artifacts/{kind}_smoke/W{W}/seed{seed}"
         out = work / rel
-        if (out / "done.json").exists() or (not args.smoke and f"dl/W{W}/seed{seed}" in remote_done):
+        if (out / "done.json").exists() or (not args.smoke and f"{kind}/W{W}/seed{seed}" in remote_done):
             print(f"seed {seed}: already done, skipping")
             continue
         if hub.enabled and not args.smoke and not (out / "last.pt").exists():
             # resume a run interrupted in an earlier Kaggle session: the whole seed directory, since
             # last.pt without best.pt would fail at prediction time if no later epoch improves
             try:
-                src = hub.pull(f"dl/W{W}/seed{seed}/", local_dir=work / "artifacts" / "_pull" / f"seed{seed}")
+                src = hub.pull(f"{kind}/W{W}/seed{seed}/", local_dir=work / "artifacts" / "_pull" / f"seed{seed}")
                 files = sorted(f for f in src.iterdir() if f.is_file()) if src.is_dir() else []
                 if any(f.name == "last.pt" for f in files):
                     out.mkdir(parents=True, exist_ok=True)

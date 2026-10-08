@@ -159,6 +159,7 @@ class Kaggle(Section):
     tabular_machine: Mapping
     dl_machine: Mapping
     samples_json_sha256: str = ""  # sha256 of samples.json on Kaggle (scripts/kaggle_run.py)
+    wave_qc_sha256: str = ""  # qc.csv of wave_dataset when it differs from input.qc_sha256 (v3: prep_v1 wave)
 
 
 @dataclass(frozen=True)

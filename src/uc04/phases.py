@@ -77,8 +77,43 @@ def phase_metrics(ev: Evaluator, prob_sorted: np.ndarray, thr: float,
     return out
 
 
-def evaluator_for(labels: pd.DataFrame, events: pd.DataFrame, h: int, ev_cfg) -> Evaluator:
-    return Evaluator(labels, events[events.split == "validation"], h, persistence=ev_cfg.alarm_persistence,
+def row_phase(ev: Evaluator, surgery_start: dict[int, float] | None) -> np.ndarray:
+    """True for rows (in the evaluator's sorted order) at or before incision."""
+    return _pre(ev.cases[ev.case_code], ev.time, surgery_start)
+
+
+def phase_scaled(prob_sorted: np.ndarray, pre: np.ndarray, thr_pre: float, thr_surgery: float) -> np.ndarray:
+    """Probability divided by its phase's threshold: the alarm replay at threshold 1.0 then uses `thr_pre`
+    before incision and `thr_surgery` after (it only compares p < thr, so this is exact)."""
+    return np.asarray(prob_sorted, float) / np.where(pre, thr_pre, thr_surgery)
+
+
+def choose_phase_thresholds(ev: Evaluator, prob_sorted: np.ndarray, pre: np.ndarray, budget: float = 1.0,
+                            n: int = 40, levels=(0.70, 0.9995)) -> dict:
+    """Two thresholds (pre-incision, surgery) with the highest event sensitivity at FA/h <= budget over the
+    whole case, ties broken by alarm PPV (as thresholds.choose_threshold). Grid: `n` quantiles of the eligible
+    probabilities of each phase between `levels`."""
+    p = np.asarray(prob_sorted, float)
+    ok = ev.eligible & np.isfinite(p)
+    q = np.linspace(*levels, n)
+    c_pre, c_sur = np.unique(np.quantile(p[ok & pre], q)), np.unique(np.quantile(p[ok & ~pre], q))
+    best, best_key, best_fa = None, None, None
+    for tp in c_pre:
+        for ts in c_sur:
+            s, fa, ppv = ev.quick(phase_scaled(p, pre, tp, ts), 1.0)
+            if not np.isfinite(fa):
+                continue
+            key = (fa <= budget, np.nan_to_num(s, nan=-1) if fa <= budget else -fa, np.nan_to_num(ppv, nan=-1))
+            if best_key is None or key > best_key:
+                best, best_key, best_fa = (float(tp), float(ts), s, ppv), key, fa
+    tp, ts, s, ppv = best
+    return {"threshold_pre": tp, "threshold_surgery": ts, "budget_not_met": not best_key[0],
+            "event_sensitivity": s, "false_alarms_per_hour": best_fa, "alarm_ppv": ppv,
+            "grid": [len(c_pre), len(c_sur)]}
+
+
+def evaluator_for(labels: pd.DataFrame, events: pd.DataFrame, h: int, ev_cfg, split: str = "validation") -> Evaluator:
+    return Evaluator(labels, events[events.split == split], h, persistence=ev_cfg.alarm_persistence,
                      cooldown=ev_cfg.alarm_cooldown_seconds, early_lead=ev_cfg.early_lead_seconds,
                      rearm=ev_cfg.alarm_rearm)
 

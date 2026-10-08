@@ -1,0 +1,6 @@
+# patient-derived demo data and models: export locally, never commit
+backend/data/
+frontend/node_modules/
+frontend/dist/
+__pycache__/
+frontend/tsconfig.tsbuildinfo

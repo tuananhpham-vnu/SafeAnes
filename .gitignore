@@ -33,6 +33,7 @@ logs/
 .kaggle/
 
 hf_dl/
+catboost_info/
 
 # secrets
 .env

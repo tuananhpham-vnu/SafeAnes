@@ -131,7 +131,8 @@ class CatBoost:
     def __init__(self, columns, seed, threads=4):
         from catboost import CatBoostClassifier
         self.columns = list(columns)
-        self.model = CatBoostClassifier(**CATBOOST_PARAMS, random_seed=seed, thread_count=threads, verbose=False)
+        self.model = CatBoostClassifier(**CATBOOST_PARAMS, random_seed=seed, thread_count=threads, verbose=False,
+                                        allow_writing_files=False)  # no catboost_info/ in the working directory
 
     def fit(self, X, y):
         self.model.fit(X[self.columns], y)

@@ -1,0 +1,89 @@
+{
+  "version": "0.1-draft",
+  "status": "CẦN BÁC SĨ GÂY MÊ DUYỆT trước khi dùng ngoài nghiên cứu. Nguồn tham khảo cần đối chiếu lại bản gốc.",
+  "purpose": "Tri thức sinh lý dùng chung cho (1) chọn nhãn/ngưỡng cá nhân (rel_labels), (2) kiểm tra dấu của mô hình hồ sơ (personalize, offset), (3) đặc trưng kỳ vọng so với sinh lý đo trong ca (pers_baro), (4) system prompt của lớp LLM (llm_explain). Không dùng để ra y lệnh.",
+  "priors": [
+    {
+      "id": "htn_autoregulation",
+      "condition": "f1b_preop_htn == 1",
+      "statement": "Tăng huyết áp mạn làm đường cong tự điều hoà lưu lượng não và thận dịch sang phải: ngưỡng dưới cao hơn người bình thường, nên MAP 65 mmHg có thể đã thấp so với nền của bệnh nhân.",
+      "mechanism": "ngưỡng tưới máu",
+      "use": ["nhãn cá nhân: MAP < max(65, 0,8 × MAP nền)", "LLM: giải thích vì sao cảnh báo theo ngưỡng riêng"],
+      "expected_sign": {"risk_vs_profile": "+"},
+      "references": ["Strandgaard S. Autoregulation of cerebral blood flow in hypertensive patients. Circulation 1976;53:720-7.",
+                     "Futier E et al. (INPRESS) Effect of individualized vs standard blood pressure management strategies on postoperative organ dysfunction. JAMA 2017;318:1346-57."]
+    },
+    {
+      "id": "elderly_baroreflex",
+      "condition": "f1b_age >= 70",
+      "statement": "Người cao tuổi có động mạch cứng hơn và phản xạ áp lực giảm: khi giãn mạch, nhịp tim tăng bù kém, huyết áp dao động mạnh hơn và dễ tụt sau khởi mê.",
+      "mechanism": "giảm bù trừ HR, giảm dự trữ",
+      "use": ["kỳ vọng pers_baro gần 0 hơn (đối chiếu sinh lý đo trong ca)", "kiểm tra dấu: tuổi tăng thì nguy cơ không giảm", "LLM"],
+      "expected_sign": {"risk_vs_profile": "+", "pers_baro": "less negative"},
+      "references": ["Südfeld S et al. Post-induction hypotension and early intraoperative hypotension associated with general anaesthesia. Br J Anaesth 2017;119:57-64."]
+    },
+    {
+      "id": "diabetes_autonomic",
+      "condition": "st_preop_dm == 1",
+      "statement": "Đái tháo đường, nhất là khi có bệnh thần kinh tự chủ, làm đáp ứng nhịp tim và co mạch bù trừ kém; tụt huyết áp trong mổ thường nặng hơn và cần vận mạch nhiều hơn.",
+      "mechanism": "giảm bù trừ HR và trương lực mạch",
+      "use": ["kỳ vọng pers_baro gần 0", "LLM: cảnh báo rằng HR có thể không tăng dù MAP giảm"],
+      "expected_sign": {"risk_vs_profile": "+", "pers_baro": "less negative"},
+      "references": ["Burgos LG et al. Increased intraoperative cardiovascular morbidity in diabetics with autonomic neuropathy. Anesthesiology 1989;70:591-7."]
+    },
+    {
+      "id": "asa_reserve",
+      "condition": "f1b_asa >= 3 or f1c_pre_emop == 1",
+      "statement": "ASA ≥ 3 và mổ cấp cứu đi kèm dự trữ tim mạch thấp và tỷ lệ tụt huyết áp trong mổ cao hơn.",
+      "mechanism": "dự trữ thấp",
+      "use": ["kiểm tra dấu", "hiệu chỉnh/ngưỡng theo nhóm (Mondrian)", "LLM"],
+      "expected_sign": {"risk_vs_profile": "+"},
+      "references": ["Südfeld S et al. Br J Anaesth 2017;119:57-64."]
+    },
+    {
+      "id": "propofol_vasodilation",
+      "condition": "f1b_ppf_d10 >= 0.3",
+      "statement": "Propofol gây giãn mạch (giảm SVR), giảm trương lực tĩnh mạch và ức chế phản xạ áp lực, theo liều; tăng nồng độ đích thường đi trước giảm MAP vài phút.",
+      "mechanism": "SVR giảm, tiền tải giảm",
+      "use": ["nhóm yếu tố dẫn 'Độ mê / thuốc mê'", "counterfactual 'không tăng thuốc mê'", "LLM"],
+      "expected_sign": {"d_svr": "-"},
+      "references": ["Saugel B, Sessler DI. Perioperative blood pressure management. Anesthesiology 2021;134:250-61."]
+    },
+    {
+      "id": "remifentanil_bradycardia",
+      "condition": "f1b_rftn_d10 >= 0.5",
+      "statement": "Remifentanil liều cao gây chậm nhịp tim và giảm trương lực giao cảm, có thể làm giảm cả HR và SVR.",
+      "mechanism": "HR giảm, SVR giảm",
+      "use": ["nhóm yếu tố dẫn 'Độ mê / thuốc mê'", "LLM"],
+      "expected_sign": {"d_hr": "-"},
+      "references": ["Cần bổ sung nguồn (dược lý remifentanil)."]
+    },
+    {
+      "id": "volatile_svr",
+      "condition": "f1b_mac_d10 >= 0.1 or f1c_drug_exp_sevo_d5 >= 0.3",
+      "statement": "Khí mê bay hơi (sevoflurane, desflurane) giảm SVR theo liều; tăng MAC nhanh có thể đi trước giảm MAP.",
+      "mechanism": "SVR giảm",
+      "use": ["nhóm yếu tố dẫn", "counterfactual", "LLM"],
+      "expected_sign": {"d_svr": "-"},
+      "references": ["Cần bổ sung nguồn (dược lý khí mê)."]
+    },
+    {
+      "id": "venous_return",
+      "condition": "f1b_position_reverse_trendelenburg == 1 or f1b_position_prone == 1 or PEEP tăng",
+      "statement": "Tư thế đầu cao, nằm sấp hoặc tăng PEEP làm giảm hồi lưu tĩnh mạch và thể tích nhát bóp, đặc biệt khi thiếu dịch (PPV cao).",
+      "mechanism": "SV giảm",
+      "use": ["nhóm yếu tố dẫn 'Thở máy'", "LLM"],
+      "expected_sign": {"d_sv": "-"},
+      "references": ["Cần bổ sung nguồn."]
+    },
+    {
+      "id": "post_induction",
+      "condition": "f1a_min_since_anestart <= 20",
+      "statement": "Giai đoạn 20 phút đầu sau khởi mê là lúc thuốc mê đạt đỉnh và chưa có kích thích phẫu thuật: tụt huyết áp do giãn mạch hay gặp nhất.",
+      "mechanism": "SVR giảm",
+      "use": ["cờ bối cảnh", "LLM"],
+      "expected_sign": {"risk": "+"},
+      "references": ["Südfeld S et al. Br J Anaesth 2017;119:57-64."]
+    }
+  ]
+}

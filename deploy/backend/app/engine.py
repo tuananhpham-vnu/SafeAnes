@@ -17,6 +17,7 @@ import lightgbm as lgb
 import numpy as np
 import pandas as pd
 
+from . import chain as chain_mod
 from .features import GROUPS, UNITS, group_of, label_of
 
 HORIZONS = (300, 600, 900, 1200, 1800)
@@ -134,6 +135,11 @@ class Store:
         self.cases = {c["caseid"]: c for c in json.loads((data / "cases.json").read_text(encoding="utf-8"))}
         rp = data / "report.json"
         self.report = json.loads(rp.read_text(encoding="utf-8")) if rp.exists() else {}
+        self.chain = chain_mod.load(data)  # None when the bundle has no component-forecast models
+
+    @lru_cache(maxsize=16)
+    def chain_frame(self, caseid: int) -> pd.DataFrame:
+        return self.chain.prepare(self.frame(caseid))
 
     @lru_cache(maxsize=64)
     def frame(self, caseid: int) -> pd.DataFrame:
@@ -156,7 +162,9 @@ class Store:
         i = int(np.clip(np.searchsorted(df.time.to_numpy(), t, side="right") - 1, 0, len(df) - 1))
         row = df.iloc[i]
         pre = row.time <= self.cases[caseid]["surgery_start_s"]
-        return {**explain_row(self.models[model], row, h, float(row.time), bool(row.eligible), pre), "caseid": caseid}
+        out = {**explain_row(self.models[model], row, h, float(row.time), bool(row.eligible), pre), "caseid": caseid}
+        out["chain"] = self.chain.explain(self.chain_frame(caseid), i) if self.chain is not None else None
+        return out
 
 
 CONTEXT_SHOWN = ("f1a_min_since_anestart", "f1a_min_since_opstart", "f1a_n_prev_events", "f1a_min_since_last_event",

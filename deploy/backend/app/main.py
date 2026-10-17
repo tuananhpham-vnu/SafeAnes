@@ -173,7 +173,14 @@ def infer_explain(sid: str, t: float, model: str = "lgbm_context", horizon: int 
     i = int(np.clip(np.searchsorted(times, t, side="right") - 1, 0, len(times) - 1))
     row = ses["features"].iloc[i]
     pre = ses["opstart"] is None or times[i] <= ses["opstart"]
-    return explain_row(mdl, row, horizon, float(times[i]), bool(ses["eligible"][i]), pre)
+    out = explain_row(mdl, row, horizon, float(times[i]), bool(ses["eligible"][i]), pre)
+    if store.chain is not None:
+        if "chain_frame" not in ses:
+            ses["chain_frame"] = store.chain.prepare(ses["features"], times)
+        out["chain"] = store.chain.explain(ses["chain_frame"], i)
+    else:
+        out["chain"] = None
+    return out
 
 
 @app.get("/api/examples")

@@ -70,6 +70,19 @@ nhắc tới nằm ở repo build dữ liệu, nên các mục dưới đây đ�
 | v3-6 | Thêm `dl_context` (`train_dl.py --context`, `dl_finalize.py --context`): Conv1D + Transformer như kế hoạch 7, nhánh chỉ số nhận thêm 31 cột `f1a_*` (chuẩn hóa bằng thống kê tính trên dòng train eligible, như `norm_tabular.json`) và 2 cờ thiếu cho `f1a_min_since_opstart`, `f1a_min_since_last_event`; ghi `artifacts/dl_context/`, report có hậu tố `_context` | Mô hình mới cho giai đoạn trước rạch da (không có sóng): ngữ cảnh của ca thay cho phần thông tin sóng bị thiếu. Hai cờ giữ thông tin "đang trước rạch da" / "chưa có đợt tụt" mà điền median sẽ xóa mất | 20 lần train trên Kaggle như DL gốc; mọi siêu tham số giữ nguyên |
 | v3-7 | Thêm TabM (`scripts/train_tabm.py`, `uc04.tabm`): `tabm_numeric` (66 chỉ số), `tabm_context` (+ 31 cột `f1a_*`). Một mô hình 5 horizon có thứ tự cho mỗi W (luật đầu ra như DL), 1 seed; sau đó mỗi horizon dùng chung Platt, chọn ngưỡng, bootstrap và file kết quả với `train_tabular.py` | Họ TabM của E06/E08 chưa chạy trên cohort UC04. Siêu tham số giữ như E06 (k=16, 2 khối × 64, PLE 8 bin, AdamW 2e-3, dừng sớm trên 1/5 bệnh nhân train) | Chạy trên GPU Kaggle; khác E06 ở số horizon và cách tách nhóm dừng sớm (băm `subjectid` với salt mới) |
 
+## Tuần 14: truy nguyên và cá nhân hoá (16/10/2026)
+
+Theo nhận xét tuần 13. Không đổi các mô hình đã khoá; đây là các lớp phân tích, giải thích và cá nhân hoá chạy song song.
+Mọi bước huấn luyện chạy trên Kaggle CPU (code nhúng, chạy thử 40 ca trước), chỉ đọc train, calibration, validation.
+
+| # | Khác gì | Lý do | Ảnh hưởng dự kiến |
+|---|---|---|---|
+| w14-1 | `f1b_*`, `f1c_*` (thuốc mê, BIS, PEEP, thở máy, khí máu) và hồ sơ trước mổ được dùng trong **lớp giải thích** (`uc04.hemo_forecast`, `uc04.mechanism`) và trong phân tích (`feature_eda`, `personalize`), không vào mô hình nguy cơ đã khoá | Truy nguyên cần biết thuốc/thở máy thay đổi gì trước khi MAP giảm; kế hoạch 3.2 chỉ giới hạn đầu vào của mô hình cảnh báo | Mô hình cảnh báo và số liệu tuần 13 không đổi |
+| w14-2 | Nhãn cá nhân `uc04.rel_labels`: MAP < max(65, 0,8 × MAP nền) ≥ 60 s, dựng từ khối 30 s (`map_min/max/missing_w30`) thay vì lưới 1 s; MAP nền suy từ `map_drop_pct` | Samples v3 không có MAP 1 s; dựng lại từ prep cần thêm dataset | Khởi phát lệch tối đa 30 s; kiểm định bằng cách dựng lại nhãn MAP < 65 rồi so với `y_h` (`label_check.csv`). MAP nền phần lớn đo sau khởi mê (INTERPRETATION_NOTES 4) nên mức giảm 20% bị đánh giá thấp |
+| w14-3 | Dự báo thành phần HR / SV / SVR / MAP trong 5–15 phút (`hemo_forecast`), nhãn là thay đổi log của trung bình 2 phút ở dòng t + h cùng ca | Truy ngược "15 phút tới tụt do chỉ số nào" | SV, SVR là proxy LZ tính từ huyết áp; kiểm chứng hướng thay đổi với EV1000/Vigileo (`hemo_validate.py`, dữ liệu thiết bị không vào đầu vào) |
+| w14-4 | Counterfactual "không thay đổi thuốc mê / thở máy": đặt các cột thay đổi gần đây về 0 rồi dự báo lại | Trả lời "nếu không tăng thuốc mê thì sao" | Chỉ là quy kết theo mô hình: có nhiễu do chỉ định, VitalDB không có thời điểm tiêm bolus vận mạch |
+| w14-5 | Trên máy cục bộ, scikit-learn, matplotlib (và phụ thuộc) được cài vào `.local_deps` bằng `--no-deps`; cục bộ chỉ chạy test và demo, không huấn luyện | Máy cục bộ 8 GB RAM, thiếu hai thư viện này | Không ảnh hưởng kết quả; Kaggle có sẵn các thư viện |
+
 ## Ghi chú từ NB01 (không phải sai lệch, để nhóm cân nhắc)
 
 - (Với luật cũ, đã thay bằng mục 23.) Ở mốc 5 phút, khoảng 18% dòng eligible có nhãn −1 (`lenient`). Phân tích 300 ca train: 3,4% do sát cuối ca, 14,9% do hơn 5% số giây tương lai không xác định. Khoảng trống điển hình chỉ khoảng 31 giây (trung vị, 75% ≤ 49 giây), rất có thể là lấy máu hoặc flush. Mỗi khoảng trống như vậy làm mất nhãn của khoảng 12 mốc dự đoán trước nó.

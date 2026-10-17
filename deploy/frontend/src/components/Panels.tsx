@@ -1,6 +1,7 @@
 import { useState } from "react";
 import {
-  HORIZONS, LEVELS, alarmKnown, clock, fmt, horizonLabel, pct, type Alarm, type Explanation, type Horizon, type Level, type Timeline,
+  HORIZONS, LEVELS, alarmKnown, clock, fmt, horizonLabel, pct, type Alarm, type Chain, type Comp, type Explanation, type Horizon, type Level,
+  type Timeline,
 } from "../api";
 import { useWidth } from "./useWidth";
 
@@ -164,6 +165,128 @@ export function Drivers({ ex, loading }: { ex: Explanation | null; loading: bool
       <p className="note" style={{ marginTop: 10 }}>
         Đóng góp TreeSHAP trên thang log-odds của xác suất đã hiệu chỉnh, cho mốc {horizonLabel(ex.horizon_s)}. Đây là đóng góp
         thống kê của mô hình, không phải chẩn đoán nguyên nhân.
+      </p>
+    </div>
+  );
+}
+
+/* ---------- why: driver -> HR / SV / SVR -> MAP -> risk (component-forecast chain) */
+const COMPS = ["hr", "sv", "svr"] as const;
+const signed = (v: number | null | undefined, d = 1) => (v == null ? "–" : `${v > 0 ? "+" : ""}${fmt(v, d)}%`);
+// a falling component pushes MAP down and risk up: red; rising: blue (same palette as the risk drivers)
+const tone = (v: number | null | undefined) => (v == null ? "var(--muted)" : v < 0 ? "var(--up)" : "var(--down)");
+
+function ChainDiagram({ c, p }: { c: Chain; p: number | null }) {
+  const [ref, w] = useWidth<HTMLDivElement>();
+  const W = Math.max(w, 320);
+  // driver nodes: the groups with the largest total effect over the three components
+  const tot = new Map<string, number>();
+  COMPS.forEach((k) => c.drivers[k].forEach((d) => tot.set(d.group, (tot.get(d.group) ?? 0) + Math.abs(d.pp))));
+  const groups = [...tot.entries()].sort((a, b) => b[1] - a[1]).slice(0, 6).map(([g]) => g);
+  const rowH = 30, H = Math.max(groups.length, 3) * rowH + 40;
+  const x0 = 4, x1 = W * 0.36, x2 = W * 0.64, x3 = W * 0.86, nodeW = Math.min(150, W * 0.3);
+  const gy = (i: number) => 26 + i * rowH + (H - 40 - groups.length * rowH) / 2;
+  const cy = (i: number) => 26 + i * ((H - 40) / 3) + (H - 40) / 6 - 8;
+  const maxPP = Math.max(0.5, ...COMPS.flatMap((k) => c.drivers[k].map((d) => Math.abs(d.pp))));
+  const maxF = Math.max(1, ...COMPS.map((k) => Math.abs(c.forecast[k] ?? 0)));
+  const midY = (H - 14) / 2;
+  return (
+    <div ref={ref}>
+      <svg className="chart" width={W} height={H} role="img"
+        aria-label="Chuỗi giải thích: yếu tố dẫn, thành phần huyết động, MAP và nguy cơ">
+        <text x={x0} y={12} className="axis-label">Yếu tố dẫn</text>
+        <text x={x1} y={12} className="axis-label">Dự báo 15 phút tới</text>
+        <text x={x3 - 20} y={12} className="axis-label">Kết quả</text>
+        {COMPS.map((k, j) => c.drivers[k].filter((d) => groups.includes(d.group)).map((d) => {
+          const i = groups.indexOf(d.group), sy = gy(i) + 9, ty = cy(j) + 9;
+          return <path key={`${k}-${d.group}`} d={`M${x0 + nodeW},${sy} C${(x0 + nodeW + x1) / 2},${sy} ${(x0 + nodeW + x1) / 2},${ty} ${x1},${ty}`}
+            fill="none" stroke={tone(d.pp)} strokeOpacity={0.55} strokeWidth={1 + 7 * Math.abs(d.pp) / maxPP}>
+            <title>{`${d.group} → ${c.labels[k]}: ${d.pp > 0 ? "+" : ""}${d.pp.toFixed(1)} điểm %`}</title></path>;
+        }))}
+        {COMPS.map((k, j) => (
+          <path key={`m-${k}`} d={`M${x1 + nodeW * 0.78},${cy(j) + 9} C${(x1 + x2) / 2 + 30},${cy(j) + 9} ${(x1 + x2) / 2 + 30},${midY} ${x2},${midY}`}
+            fill="none" stroke={tone(c.forecast[k])} strokeOpacity={0.55} strokeWidth={1 + 7 * Math.abs(c.forecast[k] ?? 0) / maxF} />
+        ))}
+        <line x1={x2 + 78} x2={x3 - 24} y1={midY} y2={midY} stroke="var(--axis)" strokeWidth={2} markerEnd="" />
+        {groups.map((g, i) => (
+          <g key={g}><rect x={x0} y={gy(i)} width={nodeW} height={18} rx={5} fill="var(--surface-2)" />
+            <text x={x0 + 6} y={gy(i) + 13} style={{ fill: "var(--ink-2)", fontSize: 11 }}>{g.length > 26 ? g.slice(0, 25) + "…" : g}</text></g>
+        ))}
+        {COMPS.map((k, j) => (
+          <g key={k}><rect x={x1} y={cy(j)} width={nodeW * 0.78} height={18} rx={5} fill="var(--surface-2)"
+            stroke={c.dominant === k ? tone(c.forecast[k]) : "none"} strokeWidth={1.5} />
+            <text x={x1 + 6} y={cy(j) + 13} style={{ fill: "var(--ink)", fontSize: 11, fontWeight: c.dominant === k ? 700 : 500 }}>
+              {k.toUpperCase()} <tspan style={{ fill: tone(c.forecast[k]) }}>{signed(c.forecast[k])}</tspan></text></g>
+        ))}
+        <g><rect x={x2} y={midY - 9} width={78} height={18} rx={5} fill="var(--surface-2)" />
+          <text x={x2 + 6} y={midY + 4} style={{ fill: "var(--ink)", fontSize: 11, fontWeight: 700 }}>
+            MAP <tspan style={{ fill: tone(c.forecast.map) }}>{signed(c.forecast.map)}</tspan></text></g>
+        <g><rect x={x3 - 22} y={midY - 9} width={W - x3 + 18} height={18} rx={5} fill="var(--surface-2)" />
+          <text x={x3 - 16} y={midY + 4} style={{ fill: "var(--ink)", fontSize: 11, fontWeight: 700 }}>Nguy cơ {pct(p)}%</text></g>
+      </svg>
+    </div>
+  );
+}
+
+function Split({ title, v }: { title: string; v: Record<Comp, number | null> }) {
+  const max = Math.max(5, ...(["map", ...COMPS] as Comp[]).map((k) => Math.abs(v[k] ?? 0)));
+  return (
+    <div>
+      <div className="note" style={{ marginBottom: 6 }}>{title}</div>
+      <div className="drivers">
+        {(["map", ...COMPS] as Comp[]).map((k) => (
+          <div key={k} className="driver">
+            <div className="name" style={{ fontWeight: k === "map" ? 650 : 400 }}>{k === "map" ? "MAP = HR × SV × SVR" : k.toUpperCase()}</div>
+            {/* bar direction follows the value; colour: a fall (raises risk) red */}
+            <div className="dbar" aria-hidden><div className="mid" />
+              <div className="b" style={{ left: (v[k] ?? 0) >= 0 ? "50%" : `${50 - Math.min(Math.abs(v[k] ?? 0) / max, 1) * 50}%`,
+                width: `${Math.min(Math.abs(v[k] ?? 0) / max, 1) * 50}%`, background: tone(v[k]) }} /></div>
+            <div className="val">{signed(v[k])}</div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+export function WhyChain({ ex, loading }: { ex: Explanation | null; loading: boolean }) {
+  if (!ex) return <div className="empty">{loading ? "Đang tính…" : "Chọn một thời điểm có dự báo."}</div>;
+  const c = ex.chain;
+  if (!c) return <div className="empty">Bản dữ liệu demo chưa có mô hình dự báo thành phần (chạy export_bundle.py --chain-models).</div>;
+  const dom = c.dominant ? c.labels[c.dominant] : null;
+  return (
+    <div style={{ opacity: loading ? 0.6 : 1, transition: "opacity .2s" }}>
+      <p style={{ margin: "0 0 10px", fontSize: 14 }}>
+        {dom
+          ? <>15 phút tới MAP dự kiến <b style={{ color: tone(c.forecast.map) }}>{signed(c.forecast.map)}</b>, chủ yếu do <b>{dom}</b> {signed(c.forecast[c.dominant!])}
+            {c.drivers[c.dominant!][0] && <>; yếu tố đẩy mạnh nhất: <b>{c.drivers[c.dominant!][0].group}</b></>}.</>
+          : <>15 phút tới MAP dự kiến <b>{signed(c.forecast.map)}</b>; không thành phần nào dự kiến giảm.</>}
+      </p>
+      <ChainDiagram c={c} p={ex.probability} />
+      <div className="grid2">
+        <Split title={`10 phút qua · ${c.past_pattern}`} v={c.past} />
+        <Split title="15 phút tới (dự báo)" v={c.forecast} />
+      </div>
+      {c.no_change && (
+        <div className="banner soft" style={{ marginTop: 12 }}>
+          <span aria-hidden>↺</span>
+          <div>Nếu <b>không có</b> thay đổi thuốc mê / thở máy trong 10 phút qua, mô hình dự báo MAP {signed(c.no_change.map)} thay vì {signed(c.forecast.map)}
+            (SVR {signed(c.no_change.svr)} thay vì {signed(c.forecast.svr)}). Đây là ước lượng theo mô hình, không phải hiệu quả nhân quả.</div>
+        </div>
+      )}
+      <div className="chips">
+        {c.findings.map((f) => <span key={f} className="chip">{f}</span>)}
+        {c.profile.map((f) => <span key={f} className="chip prof">{f}</span>)}
+        {c.personal.hr_per_map != null && (
+          <span className="chip" title="Độ dốc HR theo MAP trong 30 phút: âm = nhịp tim tăng bù khi MAP giảm; gần 0 = bù trừ yếu">
+            HR theo MAP: {fmt(c.personal.hr_per_map, 2)} nhịp/mmHg{c.personal.hr_per_map > -0.1 ? " (bù trừ yếu)" : ""}</span>
+        )}
+        {c.personal.lowest_map != null && <span className="chip">MAP thấp nhất từ đầu ca: {fmt(c.personal.lowest_map)} mmHg</span>}
+      </div>
+      <p className="note" style={{ marginTop: 10 }}>
+        HR, SV, SVR: SV và SVR là proxy tính từ huyết áp (Liljestrand–Zander), chỉ tin được về hướng thay đổi.
+        Độ dày mũi tên theo mức đóng góp (TreeSHAP, điểm %). Đây là phân tích kết hợp, không phải chẩn đoán nguyên nhân.
+        {c.missing_groups.length > 0 && <> Thiếu dữ liệu: {c.missing_groups.join(", ")}.</>}
       </p>
     </div>
   );

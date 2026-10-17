@@ -3,7 +3,7 @@ import {
   HORIZONS, alarmOnAt, api, clock, fmt, horizonLabel, indexAt, level, pct,
   type Example, type Explanation, type Horizon, type InferResult, type ModelInfo, type ModelName,
 } from "../api";
-import { AlarmLog, Drivers, HorizonProfile, RiskHero, Vitals } from "./Panels";
+import { AlarmLog, Drivers, HorizonProfile, RiskHero, Vitals, WhyChain } from "./Panels";
 import { TimelineChart } from "./TimelineChart";
 
 const FORMAT = `time,map,sbp,dbp,hr,spo2,etco2,rr
@@ -230,6 +230,11 @@ export function InferPage({ models }: { models: ModelInfo[] }) {
             <TimelineChart tl={res} horizon={horizon} cursor={tAt} reveal marker={tAt} phaseKnown={res.phase_known} onSeek={setSel} />
           </div>
 
+          <div className="card span-12">
+            <h2>Chuỗi nguyên nhân · 15 phút tới</h2>
+            <p className="sub">Tại {clock(tAt - t0)}: thành phần huyết động nào dự kiến kéo MAP xuống, và yếu tố nào đẩy thành phần đó.</p>
+            <WhyChain ex={ex} loading={exLoading} />
+          </div>
           <div className="card span-7">
             <h2>Vì sao nguy cơ ở mức này?</h2>
             <p className="sub">Tại {clock(tAt - t0)}, mốc {horizonLabel(horizon)}.</p>

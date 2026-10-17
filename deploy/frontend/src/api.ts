@@ -34,6 +34,24 @@ export interface Explanation {
   features: { column: string; label: string; group: string; contribution: number; value: number | null; unit: string }[];
   context: Record<string, number | null>;
   data_quality: Record<string, number | null>;
+  chain?: Chain | null;
+}
+export type Comp = "hr" | "sv" | "svr" | "map";
+/** driver -> component -> MAP chain (backend app/chain.py); percentages are relative changes, pp = % points */
+export interface Chain {
+  horizon_s: number;
+  past: Record<Comp, number | null>;
+  past_pattern: string;
+  forecast: Record<Comp, number | null>;
+  dominant: "hr" | "sv" | "svr" | null;
+  labels: Record<Comp, string>;
+  drivers: Record<"hr" | "sv" | "svr", { group: string; pp: number }[]>;
+  no_change: { svr: number | null; map: number | null } | null;
+  changed_inputs: string[];
+  findings: string[];
+  profile: string[];
+  personal: { hr_per_map: number | null; lowest_map: number | null; map_sd_30min: number | null };
+  missing_groups: string[];
 }
 export interface Metrics {
   auroc: number; auroc_lo: number; auroc_hi: number; auprc: number; event_sensitivity: number;

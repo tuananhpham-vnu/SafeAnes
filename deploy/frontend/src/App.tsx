@@ -5,7 +5,7 @@ import {
 } from "./api";
 import { InferPage } from "./components/InferPage";
 import { ModelReport } from "./components/ModelReport";
-import { AlarmLog, Drivers, HorizonProfile, RiskHero, Vitals } from "./components/Panels";
+import { AlarmLog, Drivers, HorizonProfile, RiskHero, Vitals, WhyChain } from "./components/Panels";
 import { TimelineChart } from "./components/TimelineChart";
 
 const SPEEDS = [{ k: 30, l: "30×" }, { k: 120, l: "2′/s" }, { k: 600, l: "10′/s" }];
@@ -218,6 +218,11 @@ export default function App() {
                   onSeek={(t) => { setPlaying(false); setCursor(t); }} />
               </div>
 
+              <div className="card span-12">
+                <h2>Chuỗi nguyên nhân · 15 phút tới</h2>
+                <p className="sub">Tại {clock(tAt - t0)}: thành phần huyết động nào dự kiến kéo MAP xuống, và yếu tố nào đẩy thành phần đó.</p>
+                <WhyChain ex={ex} loading={exLoading} />
+              </div>
               <div className="card span-7">
                 <h2>Vì sao nguy cơ ở mức này?</h2>
                 <p className="sub">Yếu tố đẩy nguy cơ lên/xuống tại {clock(tAt - t0)}, mốc {horizonLabel(horizon)}.</p>

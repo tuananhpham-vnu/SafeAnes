@@ -209,3 +209,12 @@ tr.hl td { background: var(--series-1-wash); }
 .cov { display: grid; grid-template-columns: 90px 1fr 48px; gap: 8px; align-items: center; font-size: 12px; margin: 4px 0; }
 .cov .bar { height: 8px; border-radius: 4px; background: var(--surface-2); overflow: hidden; }
 .cov .bar i { display: block; height: 100%; background: var(--series-1); border-radius: 4px; }
+
+/* ---------- why chain (driver -> HR / SV / SVR -> MAP -> risk) */
+.chart .axis-label { fill: var(--muted); font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: .04em; }
+.grid2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; margin-top: 12px; }
+@media (max-width: 700px) { .grid2 { grid-template-columns: 1fr; } }
+.banner.soft { background: var(--surface-2); border-color: var(--border); }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 12px; }
+.chip { font-size: 12px; padding: 3px 9px; border-radius: 999px; background: var(--surface-2); color: var(--ink-2); border: 1px solid var(--border); }
+.chip.prof { background: var(--series-1-wash); color: var(--ink); }

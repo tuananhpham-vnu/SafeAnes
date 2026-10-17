@@ -8,6 +8,8 @@ Run from the repo root with PYTHONPATH="src;.local_deps". Writes:
   data/cases/<caseid>.parquet      validation cases for replay: model features + labels, one row per 30 s
   data/cases.json                  case list (duration, incision time, events)
   data/report.json                 v2 vs v3 and by-phase tables (from compare_versions / phase_thresholds)
+  data/chain/<comp>_900.txt, meta.json   component-forecast models of scripts/hemo_forecast.py (--chain-models), for
+                                   the "why" chain; the demo cases then also carry the anaesthesia / clinical inputs
 The demo cases are VitalDB validation cases (open dataset, data use agreement): keep data/ out of git and
 out of public deployments.
 """
@@ -53,6 +55,20 @@ def export_models(work: Path, W: int, out: Path) -> None:
         print(f"model {model}: {len(meta['columns'])} columns, {len(HORIZONS)} horizons")
 
 
+def export_chain(models: Path, out: Path) -> list[str]:
+    """Copy the 15-min component-forecast boosters; return their input columns."""
+    import lightgbm as lgb
+    out.mkdir(parents=True, exist_ok=True)
+    columns = None
+    for c in ("hr", "sv", "svr", "map"):
+        b = lgb.Booster(model_file=str(models / f"{c}_900.txt"))
+        b.save_model(str(out / f"{c}_900.txt"))
+        columns = b.feature_name()
+    (out / "meta.json").write_text(json.dumps({"horizon_s": 900, "columns": columns}, indent=1), encoding="utf-8")
+    print(f"chain models: {len(columns)} inputs")
+    return [c for c in columns if not c.startswith("pers_")]  # pers_* are computed at run time
+
+
 def pick_cases(labels: pd.DataFrame, events: pd.DataFrame, ss: dict, n: int, seed: int) -> list[int]:
     """A spread of validation cases: events before incision, during surgery, both, none."""
     ev = events.assign(pre=events.onset <= events.caseid.map(ss))
@@ -82,6 +98,8 @@ def main() -> int:
     ap.add_argument("--report", nargs="*", default=["artifacts/v3/compare_interim.csv",
                                                     "artifacts/v3/reports/phase_thresholds_W120.csv"])
     ap.add_argument("--out", default=str(HERE / "data"))
+    ap.add_argument("--chain-models", default=None, help="dir with hr/sv/svr/map_900.txt from scripts/hemo_forecast.py")
+    ap.add_argument("--manifest", default="data/vitaldb_full/meta/cohort_manifest.csv")
     args = ap.parse_args()
     cfg = load_config(args.config)
     out, work, W = Path(args.out), Path(args.work), args.window
@@ -89,7 +107,16 @@ def main() -> int:
 
     samples = cfg.path("samples")
     cols = list(dict.fromkeys(numeric_cols(W) + list(CONTEXT_COLS)))
-    labels, feats = load_split(samples, "validation", cols)
+    extra: list[str] = []
+    if args.chain_models:
+        extra = export_chain(Path(args.chain_models), out / "chain")
+    side = [c for c in extra if c.startswith(("f1a_", "f1b_", "f1c_")) and c not in cols]
+    labels, feats = load_split(samples, "validation", cols + side)
+    if any(c.startswith("st_") for c in extra):
+        from uc04.feature_eda import static_from_manifest
+        st = static_from_manifest(Path(args.manifest))
+        feats = feats.merge(st, on="caseid", how="left")
+    cols = cols + side + [c for c in extra if c.startswith("st_")]
     events = pd.read_parquet(samples / "events.parquet")
     events = events[events.split == "validation"]
     ss = read_surgery_start(samples)

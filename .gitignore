@@ -35,6 +35,12 @@ logs/
 hf_dl/
 catboost_info/
 
+# report
+reports/
+
+# CLAUDE
+CLAUDE.md
+
 # secrets
 .env
 .env.*

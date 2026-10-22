@@ -135,12 +135,151 @@ These are research checkpoints, not a clinically validated decision system.
     return output, entries
 
 
-def publish(output: Path, entries: list[dict]) -> None:
+def prepare_support(output: Path) -> list[str]:
+    """Prepare the source, feature list and training notes requested by the user."""
+    allowed = ["configs/features_v8_71.json", "configs/uc04_v3.json",
+               "requirements.txt", "pyproject.toml"]
+    allowed += [path.relative_to(output).as_posix() for path in sorted((output / "src").rglob("*.py"))]
+    for relative in ("scripts/train_tabm.py", "scripts/train_tabular.py", "scripts/ablation_214.py"):
+        target = output / relative
+        target.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(ROOT / relative, target)
+        allowed.append(relative)
+    versions = {}
+    for model in RUNS:
+        for horizon in HORIZONS:
+            relative = f"models/{model}/W120/h{horizon}/provenance.json"
+            allowed.append(relative)
+            if horizon == 300:
+                provenance = json.loads((output / relative).read_text(encoding="utf-8"))
+                versions[model] = {"recorded_packages": provenance["packages"],
+                                   "catboost": None, "tabm": None, "rtdl_num_embeddings": None,
+                                   "git": provenance["git"]}
+    source_entries = [{"path": relative, "sha256": hashlib.sha256((output / relative).read_bytes()).hexdigest()}
+                      for relative in allowed if relative.startswith(("src/", "scripts/"))]
+    (output / "source_manifest.json").write_text(json.dumps({
+        "status": "current_workspace_support_snapshot_not_verified_exact_training_snapshot",
+        "checkpoint_static_reference": "uc04.tabm.OneHorizon",
+        "training_log_code_label": "a887f7f269c1+week15-ablation(uncommitted)",
+        "files": source_entries}, indent=2) + "\n", encoding="utf-8")
+    (output / "training_versions.json").write_text(json.dumps(versions, indent=2) + "\n", encoding="utf-8")
+    notes = """# Thông tin từ phía huấn luyện
+
+## 1. Code và khả năng nạp checkpoint
+
+Repo bổ sung snapshot code hiện có ở workspace: `src/`, hai script huấn luyện,
+script ablation, cấu hình và danh sách dependencies. SHA-256 của từng file code
+nằm trong `source_manifest.json`. Đây là snapshot hỗ trợ, **chưa xác nhận là toàn
+bộ code chính xác tại thời điểm huấn luyện**.
+
+Đọc tĩnh file TabM (không unpickle, không chạy model) xác nhận checkpoint chứa
+tham chiếu `uc04.tabm`, `OneHorizon` và `TabMMulti`. Class hiện nằm trong
+`src/uc04/tabm.py`; `scripts/train_tabm.py` import từ module này.
+
+Provenance ghi `git.commit: null`; log Kaggle ghi nhãn code
+`a887f7f269c1+week15-ablation(uncommitted)`. Đây không phải commit tái lập đầy đủ.
+Chưa thể khẳng định code hiện tại trùng từng byte với source lúc train.
+Không cung cấp một commit giả định hoặc khẳng định đã kiểm tra nạp pickle.
+
+## 2. Dữ liệu dùng để fit mô hình
+
+Theo code và log hiện có, bốn mô hình dùng bộ 71 cột từ features_v8.
+Train có 2.393 ca; log TabM ghi 810.559 dòng eligible với ít nhất một nhãn đã biết.
+
+- LightGBM, CatBoost và logistic: `fit_and_calibrate` fit estimator trên train;
+  `fit_rows` giữ eligible và y_h thuộc {0, 1} cho từng mốc.
+- TabM: chỉ nhận features/labels train vào `TabMMulti.fit`; hàng phải eligible
+  và có ít nhất một nhãn đã biết; loss bỏ qua nhãn -1. Early stopping dùng một
+  phần bệnh nhân tách từ train theo hash subjectid. Imputer/scaler chỉ fit trên
+  các bệnh nhân train dùng tối ưu, không dùng nhóm early stopping.
+- Calibration dùng để fit Platt, không dùng để fit trọng số estimator cuối.
+- Validation dùng chọn ngưỡng và báo cáo; test chỉ cho kết quả mô tả.
+
+Đây là mô tả từ source/log hiện có, chưa phải audit độc lập toàn bộ dataset.
+Giai đoạn ablation khác với huấn luyện cuối: ablation fit trên 258 ca calibration
+vì khi đó features_v8 chưa có train; không nhầm số liệu ablation với fit cuối.
+
+## 3. Danh sách 71 cột và cách chọn
+
+Danh sách có thứ tự nằm trong `configs/features_v8_71.json` (trường `columns`).
+RFE bắt đầu từ 349 đặc trưng; thứ hạng |SHAP| được học qua CV 5 fold theo bệnh
+nhân trên calibration. Điểm 71 được chốt sau khi xem đường validation: ở ba mốc
+5/10/15 phút và ba cách đánh giá, AUROC giảm không quá 0,004 so với bộ đầy đủ
+và CI của chênh lệch chứa 0. Điểm dừng tự động theo CV là 11, không phải 71.
+
+**Lựa chọn 71 không chỉ dựa trên train. Validation đã tham gia chọn số cột**,
+nên kết quả validation không phải ước lượng độc lập sau khi khóa lựa chọn.
+Test hiện có cũng đã dùng trước; cần dữ liệu độc lập để xác nhận sau cùng.
+
+## 4. Phiên bản thư viện
+
+`training_versions.json` và các provenance gốc ghi Python 3.13.15,
+LightGBM 4.6.0, scikit-learn 1.6.1, Torch 2.11.0+cpu, NumPy 2.1.3,
+pandas 2.3.3 và joblib 1.6.0. Provenance không ghi phiên bản CatBoost, tabm
+và rtdl_num_embeddings; các trường này để null, không lấy phiên bản máy local
+hoặc mức tối thiểu trong requirements làm phiên bản lúc train.
+
+`requirements.txt` là các mức tối thiểu, không phải lockfile của môi trường train.
+Chỉ nạp/chạy model và các phép tính nặng trên Kaggle. Lần chuẩn bị gói này chỉ
+đọc/copy/hash file, không chạy model tại local.
+
+## Nội dung bổ sung
+
+Gói bổ sung gồm source hỗ trợ, cấu hình, danh sách features, provenance và ghi
+chú này. Không gửi thêm ngưỡng/hiệu chỉnh (checkpoint đã chứa Platt), không có
+dữ liệu bệnh nhân, dự báo từng ca hoặc credentials. Code tạo đầy đủ các cột
+f2_* từ tín hiệu thô hiện chưa có trong repo.
+"""
+    (output / "TRAINING_NOTES.md").write_text(notes, encoding="utf-8")
+    readme = """---
+language:
+- vi
+- en
+tags:
+- lightgbm
+- catboost
+- tabm
+- logistic-regression
+- safeanes
+---
+# SafeAnesUC04_models
+
+Checkpoint của LightGBM, CatBoost, TabM và hồi quy logistic dùng 71 đặc trưng,
+W = 120 giây, tại các mốc 5 / 10 / 15 / 20 / 30 phút.
+
+- `models/<model>/W120/h<seconds>/model.joblib`: 20 checkpoint đã tải trước đó.
+- `configs/features_v8_71.json`: danh sách 71 cột theo thứ tự.
+- `src/`, `scripts/`: snapshot code hỗ trợ và các script huấn luyện/ablation.
+- `models/.../provenance.json`: metadata huấn luyện gốc.
+- `training_versions.json`: phiên bản đã ghi nhận; phiên bản thiếu để null.
+- `source_manifest.json`: SHA-256 của snapshot code hiện tại.
+- [TRAINING_NOTES.md](TRAINING_NOTES.md): chi tiết và các giới hạn tái lập.
+
+**Code hiện tại chưa được xác minh là snapshot chính xác lúc train.** TabM
+checkpoint tham chiếu `uc04.tabm.OneHorizon`, có trong source kèm theo.
+Provenance không có commit đầy đủ. CatBoost chưa có phiên bản thư viện xác nhận.
+
+Trọng số mô hình cuối được fit trên train; Platt dùng calibration. Việc chốt
+71 cột đã xem validation, nên không tuyên bố lựa chọn hoàn toàn dựa trên train.
+
+Dùng Kaggle để nạp/chạy checkpoint. Trong môi trường đó, cài dependencies với
+`pip install -r requirements.txt` và `pip install --no-deps -e .` từ snapshot.
+Đây là pickle có custom classes, không phải Transformers AutoModel; cần có
+package `uc04` khi nạp. Chưa kiểm tra nạp model trong lần bổ sung tài liệu này.
+"""
+    (output / "README.md").write_text(readme, encoding="utf-8")
+    return sorted(allowed + ["README.md", "TRAINING_NOTES.md", "training_versions.json", "source_manifest.json"])
+
+
+def publish(output: Path, entries: list[dict], *, support: bool = False) -> None:
     import os
 
     sys.path.insert(0, str(ROOT / ".local_deps"))
     from dotenv import load_dotenv
     from huggingface_hub import CommitOperationAdd, HfApi
+    from huggingface_hub.utils import disable_progress_bars
+
+    disable_progress_bars()
 
     load_dotenv(ROOT / ".env")
     token = os.getenv("SAFEANES_HF_TOKEN_WRITE") or os.getenv("HF_TOKEN")
@@ -149,17 +288,18 @@ def publish(output: Path, entries: list[dict]) -> None:
     api = HfApi(token=token)
     owner = api.whoami()["name"]
     repo_id = f"{owner}/{NAME}"
-    print(f"Uploading {repo_id}: 4 families, 20 checkpoints", flush=True)
+    print(f"Uploading {repo_id}: {'source and training metadata' if support else '20 checkpoints'}", flush=True)
     api.create_repo(repo_id=repo_id, repo_type="model", private=True, exist_ok=True)
     # Remote payload is strictly the 20 user-requested checkpoint files.
     # All supporting source, configuration, metrics and manifests stay local.
-    allowed = [f"models/{model}/W120/h{horizon}/model.joblib"
-               for model in RUNS for horizon in HORIZONS]
-    assert len(allowed) == 20 and all((output / path).is_file() for path in allowed)
+    allowed = prepare_support(output) if support else [
+        f"models/{model}/W120/h{horizon}/model.joblib" for model in RUNS for horizon in HORIZONS]
+    assert all((output / path).is_file() for path in allowed)
     operations = [CommitOperationAdd(path_in_repo=path, path_or_fileobj=str(output / path))
                   for path in allowed]
     commit = api.create_commit(repo_id=repo_id, repo_type="model", operations=operations,
-                               commit_message="Upload only 20 checkpoints for four 71-feature models")
+                               commit_message=("Add requested source, feature list and training metadata" if support
+                                               else "Upload only 20 checkpoints for four 71-feature models"))
     info = api.model_info(repo_id, revision=commit.oid, files_metadata=True)
     remote = {file.rfilename: file for file in info.siblings}
     for relative in allowed:
@@ -174,16 +314,20 @@ def publish(output: Path, entries: list[dict]) -> None:
     result = {"repo_id": repo_id, "url": f"https://huggingface.co/{repo_id}",
               "private": info.private, "commit": commit.oid,
               "verified_files": len(allowed), "checkpoint_count": 20}
-    (output.parent / f"{NAME}_upload.json").write_text(json.dumps(result, indent=2) + "\n", encoding="utf-8")
+    suffix = "support_upload" if support else "upload"
+    (output.parent / f"{NAME}_{suffix}.json").write_text(json.dumps(result, indent=2) + "\n", encoding="utf-8")
     print(json.dumps(result, indent=2), flush=True)
 
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--upload", action="store_true")
+    parser.add_argument("--support", action="store_true", help="upload requested source and training metadata")
     args = parser.parse_args()
     folder, files = package()
     print(json.dumps({"package": str(folder), "files": len(files) + 1,
                       "bytes": sum(file["size"] for file in files), "checkpoints": 20}), flush=True)
     if args.upload:
-        publish(folder, files)
+        publish(folder, files, support=args.support)
+    elif args.support:
+        print(json.dumps({"support_files": len(prepare_support(folder))}), flush=True)

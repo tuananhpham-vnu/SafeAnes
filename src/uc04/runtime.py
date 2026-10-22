@@ -43,10 +43,11 @@ def setup(args):
     return cfg, samples, work, push, subset
 
 
-def load_data(samples: Path, columns: list[str], subset: dict | None, splits=("train", "calibration", "validation")):
+def load_data(samples: Path, columns: list[str], subset: dict | None, splits=("train", "calibration", "validation"),
+              source: str = "samples"):
     labels, feats = {}, {}
     for s in splits:
-        lab, f = load_split(samples, s, columns)
+        lab, f = load_split(samples, s, columns, source=source)
         if subset is not None:
             keep = lab["caseid"].isin(subset.get(s, [])).to_numpy()
             lab, f = lab[keep].reset_index(drop=True), f[keep].reset_index(drop=True)

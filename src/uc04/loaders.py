@@ -33,18 +33,41 @@ def split_files(samples: Path, split: str, sealed: Path | None = None) -> tuple[
     return Path(samples) / "labels" / f"{split}.parquet", Path(samples) / "features" / f"{split}.parquet"
 
 
+def load_v8(root: Path, split: str, columns: Sequence[str]) -> tuple[pd.DataFrame, pd.DataFrame]:
+    """(labels, features) from `<root>/features_v8/<split>.parquet`, the cleaned columns of lgbm_full_v4.
+    features_v8 holds the main-cohort rows only, in the order of `labels/<split>.parquet` filtered on
+    in_main_cohort. `root` is the samples directory (train / calibration / validation) or the separate test
+    directory of safeanes-v3 (`safeanes-v3-test/`, same layout)."""
+    labels = pd.read_parquet(Path(root) / "labels" / f"{split}.parquet")
+    labels = labels[labels["in_main_cohort"].to_numpy(bool)].reset_index(drop=True)
+    cols = [c for c in columns if c not in ("caseid", "time")]
+    feats = pq.read_table(Path(root) / "features_v8" / f"{split}.parquet", columns=["caseid", "time", *cols]).to_pandas()
+    if len(labels) != len(feats) or not (
+            np.array_equal(labels["caseid"].to_numpy(), feats["caseid"].to_numpy())
+            and np.array_equal(labels["time"].to_numpy(), feats["time"].to_numpy())):
+        raise ValueError(f"labels and features_v8 of {split} are not row-aligned")
+    return labels, feats
+
+
 def load_split(samples: Path, split: str, columns: Sequence[str] | None = None, *, main_cohort: bool = True,
-               allow_test: bool = False, lock_path: Path | None = None, sealed: Path | None = None
-               ) -> tuple[pd.DataFrame, pd.DataFrame]:
+               allow_test: bool = False, lock_path: Path | None = None, sealed: Path | None = None,
+               source: str = "samples") -> tuple[pd.DataFrame, pd.DataFrame]:
     """(labels, features) of one split, same rows in the same order.
 
-    `columns=None` reads every feature column; pass a list to read only those.
+    `columns=None` reads every feature column; pass a list to read only those. source="v8" reads the columns
+    from features_v8 instead (main cohort only, columns required; see load_v8).
     """
     if split == TEST:
         if not allow_test:
             raise SealedError("test split requested without --final-test")
         if lock_path is None or not Path(lock_path).exists():
             raise SealedError(f"test split requested but lock file is missing: {lock_path}")
+    if source == "v8":
+        if columns is None or not main_cohort or split == TEST:
+            raise ValueError("source='v8' needs explicit columns, main_cohort=True and a non-test split")
+        return load_v8(samples, split, columns)
+    if source != "samples":
+        raise ValueError(f"unknown feature source {source!r}")
     lab_path, feat_path = split_files(samples, split, sealed)
     labels = pd.read_parquet(lab_path)
     side = [] if columns is None else [c for c in columns if c.startswith(SIDE_PREFIXES)]

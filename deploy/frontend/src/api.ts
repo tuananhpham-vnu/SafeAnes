@@ -1,86 +1,52 @@
 export const HORIZONS = [300, 600, 900, 1200, 1800] as const;
 export type Horizon = (typeof HORIZONS)[number];
-export type ModelName = "lgbm_context" | "lgbm_numeric";
+export type ModelName = "lgbm_v8" | "catboost_v8" | "logistic_v8" | "tabm_v8";
+export const MODEL_ORDER: ModelName[] = ["lgbm_v8", "catboost_v8", "logistic_v8", "tabm_v8"];
+export const MODEL_COLOR: Record<ModelName, string> = {
+  lgbm_v8: "var(--series-1)", catboost_v8: "var(--series-2)", logistic_v8: "var(--series-3)", tabm_v8: "var(--series-4)",
+};
 
-export interface CaseItem {
-  caseid: number;
-  duration_min: number;
-  incision_min: number;
-  n_events: number;
-  n_events_pre_incision: number;
+export interface EventItem { onset_s: number; end_s: number; min_map: number; pre_incision: boolean; ongoing?: boolean }
+export interface BedInfo {
+  bed: number; caseid: number; age: number | null; sex: string; asa: number | null; department: string; optype: string;
+  emergency: boolean; start_s: number; end_s: number; surgery_start_s: number; duration_s: number; events: EventItem[];
 }
-export interface EventItem { onset_s: number; end_s: number; min_map: number; pre_incision: boolean }
-export interface Alarm { time_s: number; kind: "true" | "false" | "censored"; lead_s: number | null }
-export interface Timeline {
-  caseid: number;
-  model: ModelName;
-  time_s: number[];
-  eligible: boolean[];
-  surgery_start_s: number;
-  events: EventItem[];
-  vitals: Record<"map" | "sbp" | "dbp" | "hr" | "spo2" | "etco2", (number | null)[]>;
-  risk: Record<string, (number | null)[]>;
-  alarms: Record<string, Alarm[]>;
-  thresholds: Record<string, number>;
+export interface WardInfo { source: string; horizons: number[]; speeds: number[]; v_now: number; engine: string; beds: BedInfo[] }
+export type Vitals = Record<"map" | "sbp" | "dbp" | "hr" | "spo2", number | null>;
+export interface BedSnap {
+  bed: number; t: number; loop: number; elapsed_s: number; phase: "pre_incision" | "surgery"; eligible: boolean;
+  row_time: number | null; vitals: Vitals;
+  risk: Record<ModelName, number[] | null>; alarm: Record<ModelName, boolean[]>; n_alarms: Record<ModelName, number[]>;
+  in_event: boolean; n_events: number;
+}
+export interface WaveChunk { t: number[]; map: (number | null)[]; hr: (number | null)[]; spo2: (number | null)[];
+  sbp?: (number | null)[]; dbp?: (number | null)[] }
+export interface StreamMsg { v: number; speed: number; beds: BedSnap[]; wave: Record<string, WaveChunk> }
+
+export interface Alarm { time_s: number; kind: "true" | "false" | "censored" | "pending"; lead_s: number | null }
+export interface History {
+  bed: number; info: BedInfo; t: number; loop: number; start_s: number; end_s: number; surgery_start_s: number;
+  time_s: number[]; eligible: boolean[];
+  risk: Record<ModelName, Record<string, (number | null)[]>>;
+  alarms: Record<ModelName, Record<string, Alarm[]>>;
+  thresholds: Record<ModelName, Record<string, number>>;
+  events: EventItem[]; wave: WaveChunk; vitals: Vitals; context: Record<string, number | null>;
 }
 export interface Explanation {
-  caseid: number;
-  time_s: number;
-  horizon_s: number;
-  probability: number;
-  eligible: boolean;
-  phase: "pre_incision" | "surgery";
-  groups: { id: string; label: string; kind: "monitor" | "context"; contribution: number }[];
-  features: { column: string; label: string; group: string; contribution: number; value: number | null; unit: string }[];
-  context: Record<string, number | null>;
-  data_quality: Record<string, number | null>;
-  chain?: Chain | null;
-}
-export type Comp = "hr" | "sv" | "svr" | "map";
-/** driver -> component -> MAP chain (backend app/chain.py); percentages are relative changes, pp = % points */
-export interface Chain {
-  horizon_s: number;
-  past: Record<Comp, number | null>;
-  past_pattern: string;
-  forecast: Record<Comp, number | null>;
-  dominant: "hr" | "sv" | "svr" | null;
-  labels: Record<Comp, string>;
-  drivers: Record<"hr" | "sv" | "svr", { group: string; pp: number }[]>;
-  no_change: { svr: number | null; map: number | null } | null;
-  changed_inputs: string[];
-  findings: string[];
-  profile: string[];
-  personal: { hr_per_map: number | null; lowest_map: number | null; map_sd_30min: number | null };
-  missing_groups: string[];
+  available: boolean; reason?: string; time_s: number; eligible: boolean; model: ModelName; proxy_for: ModelName | null;
+  horizon_s: number; probability: number; base_logit: number;
+  groups: { id: string; label: string; contribution: number }[];
+  features: { column: string; label: string; unit: string; group: string; contribution: number; value: number | null }[];
 }
 export interface Metrics {
-  auroc: number; auroc_lo: number; auroc_hi: number; auprc: number; event_sensitivity: number;
-  event_sensitivity_lo: number; event_sensitivity_hi: number; false_alarms_per_hour: number; alarm_ppv: number;
-  lead_median_s: number; events_eligible: number; events_detected: number; prevalence: number; ece: number;
+  auroc: number | null; auroc_lo?: number | null; auroc_hi?: number | null; auprc: number | null;
+  event_sensitivity: number | null; false_alarms_per_hour: number | null; alarm_ppv: number | null;
+  lead_median_s: number | null; events_eligible: number | null; events_detected: number | null; n_cases?: number | null;
 }
 export interface ModelInfo {
-  name: ModelName; title: string; n_features: number;
-  horizons: Record<string, { threshold: number; metrics: Metrics }>;
+  name: ModelName; title: string; n_inputs: number; explains: boolean;
+  horizons: Record<string, { threshold: number; validation: Metrics; test: Metrics | null }>;
 }
-export type ReportRow = Record<string, string | number | null>;
-export interface Quality {
-  columns: Record<string, string>;
-  coverage: Record<string, number>;
-  samples: Record<string, number>;
-  artefacts_removed: Record<string, number>;
-  baseline_map: number | null;
-  baseline_source: string;
-  duration_min: number;
-  warnings: string[];
-}
-export interface InferResult extends Timeline {
-  session: string;
-  phase_known: boolean;
-  anestart_s: number | null;
-  quality: Quality;
-}
-export interface InferIn { csv: string; anestart?: string; opstart?: string; baseline_map?: number | null; model: ModelName }
-export interface Example { caseid: number; anestart_s: number; opstart_s: number; rows: number }
 
 async function check(r: Response) {
   if (r.ok) return r;
@@ -94,20 +60,13 @@ async function get<T>(path: string, signal?: AbortSignal): Promise<T> {
 }
 
 export const api = {
-  cases: () => get<CaseItem[]>("/api/cases"),
+  ward: () => get<WardInfo>("/api/ward"),
   models: () => get<ModelInfo[]>("/api/models"),
-  report: () => get<Record<string, ReportRow[]>>("/api/report"),
-  timeline: (id: number, model: ModelName) => get<Timeline>(`/api/cases/${id}/timeline?model=${model}`),
-  explain: (id: number, model: ModelName, t: number, h: Horizon, signal?: AbortSignal) =>
-    get<Explanation>(`/api/cases/${id}/explain?model=${model}&t=${t}&horizon=${h}`, signal),
-  examples: () => get<Example[]>("/api/examples"),
-  exampleCsv: async (id: number) => (await check(await fetch(`/api/examples/${id}.csv`))).text(),
-  infer: async (body: InferIn) => (await check(await fetch("/api/infer", {
-    method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body),
-  }))).json() as Promise<InferResult>,
-  inferModel: (sid: string, model: ModelName) => get<InferResult>(`/api/infer/${sid}?model=${model}`),
-  inferExplain: (sid: string, model: ModelName, t: number, h: Horizon, signal?: AbortSignal) =>
-    get<Explanation>(`/api/infer/${sid}/explain?model=${model}&t=${t}&horizon=${h}`, signal),
+  history: (bed: number, v: number, waveS: number, signal?: AbortSignal) =>
+    get<History>(`/api/beds/${bed}/history?v=${v}&wave_s=${waveS}`, signal),
+  explain: (bed: number, v: number, model: ModelName, h: Horizon, signal?: AbortSignal) =>
+    get<Explanation>(`/api/beds/${bed}/explain?v=${v}&model=${model}&horizon=${h}`, signal),
+  streamUrl: (speed: number, v?: number) => `/api/ward/stream?speed=${speed}${v == null ? "" : `&v=${v}`}`,
 };
 
 // ---------- formatting
@@ -120,6 +79,7 @@ export const clock = (s: number) => {
   return `${String(h).padStart(2, "0")}:${String(m % 60).padStart(2, "0")}:${String(Math.floor(s % 60)).padStart(2, "0")}`;
 };
 export const horizonLabel = (h: number) => `${h / 60} phút`;
+export const sexLabel = (s: string) => (s === "M" ? "Nam" : s === "F" ? "Nữ" : s);
 
 // ---------- risk status (status colours are reserved; always shown with an icon + label)
 export type Level = "na" | "low" | "watch" | "high" | "alarm";
@@ -137,32 +97,4 @@ export const LEVELS: Record<Level, { label: string; color: string; icon: string 
   high: { label: "Nguy cơ cao", color: "var(--serious)", icon: "▲" },
   alarm: { label: "Cảnh báo", color: "var(--critical)", icon: "⚠" },
 };
-
-/** Whether the outcome of an alarm is known at `cursor`: a true alarm once its event started, any other
- *  once its horizon has passed without one (or always, in retrospective view). */
-export const alarmKnown = (a: Alarm, horizon: number, cursor: number, reveal: boolean) =>
-  reveal || (a.kind === "true" ? a.time_s + (a.lead_s ?? 0) <= cursor : a.time_s + horizon <= cursor);
-
-/** index of the last time point <= t */
-export function indexAt(times: number[], t: number): number {
-  let lo = 0, hi = times.length - 1;
-  if (hi < 0 || t < times[0]) return 0;
-  while (lo < hi) {
-    const mid = (lo + hi + 1) >> 1;
-    if (times[mid] <= t) lo = mid; else hi = mid - 1;
-  }
-  return lo;
-}
-
-/** Whether an alarm is on at row `idx`: the last alarm at or before it, and every prediction since then at or
- *  above threshold (alarms re-arm only after the probability drops below threshold). */
-export function alarmOnAt(tl: Timeline, h: string, idx: number): boolean {
-  const t = tl.time_s[idx], thr = tl.thresholds[h];
-  const last = [...tl.alarms[h]].reverse().find((a) => a.time_s <= t);
-  if (!last) return false;
-  for (let i = indexAt(tl.time_s, last.time_s); i <= idx; i++) {
-    const v = tl.risk[h][i];
-    if (v == null || v < thr) return false;
-  }
-  return true;
-}
+export const LEVEL_RANK: Record<Level, number> = { alarm: 4, high: 3, watch: 2, low: 1, na: 0 };

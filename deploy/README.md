@@ -1,101 +1,83 @@
-# SafeAnes Monitor — demo UI + API
+# SafeAnes Monitor: trạm theo dõi mô phỏng
 
-Giao diện dự báo nguy cơ tụt huyết áp trong mổ cho mô hình UC04 (samples v3). **Bản nghiên cứu, không dùng cho lâm sàng.**
+Màn hình kiểu trạm theo dõi trung tâm cho mô hình dự báo tụt huyết áp UC04. **Bản nghiên cứu, không dùng cho lâm sàng.**
 
-| Tab | Cho ai | Làm gì |
-|---|---|---|
-| **Dự báo** (mặc định) | người dùng | tải CSV sinh hiệu của một ca → nguy cơ mỗi 30 giây cho 5 mốc, cảnh báo, lý do, chất lượng dữ liệu, tải kết quả CSV |
-| Phát lại ca mẫu | trình bày | phát lại 14 ca validation VitalDB như đang theo dõi, hoặc hồi cứu cả ca |
-| Mô hình & kết quả | nhóm nghiên cứu | chỉ số validation, v2 vs v3 theo giai đoạn, so với các hệ thống cùng loại |
+- 50 ca của **tập test** `safeanes-v3` được phát lại như đang theo dõi trực tiếp. Tập test này đã được dùng để xác nhận
+  các mô hình trước, nên số liệu trên đó chỉ mang tính mô tả.
+- 4 mô hình (LightGBM, CatBoost, hồi quy logistic, TabM) dùng cùng 71 đặc trưng của `features_v8`
+  (`configs/features_v8_71.json`), W = 120 giây, 5 mốc 5–30 phút.
+- **Mỗi 2 giây:** sinh hiệu mới từ track Solar 8000 gốc.
+- **Mỗi 30 giây:** máy chủ chạy cả 4 mô hình trên hàng đặc trưng của thời điểm đó (tính chỉ từ dữ liệu tới thời điểm
+  đó), rồi cập nhật cảnh báo theo luật đã đánh giá: 2 lần liên tiếp vượt ngưỡng, nghỉ 5 phút, chỉ báo lại khi nguy cơ
+  đã xuống dưới ngưỡng.
+- Không gửi dữ liệu tương lai. Đúng/sai của một cảnh báo chỉ hiện khi thời gian đã trôi qua.
+
+| Trang | Nội dung |
+|---|---|
+| Home (`#/`) | Giới thiệu, cách mô phỏng, AUROC của 4 mô hình (validation, test mô tả), nút **Start** |
+| Trạm theo dõi (`#/ward`) | Lưới 50 giường: % nguy cơ, MAP 10 phút, HR, SpO₂, 5 mốc; chọn mô hình, mốc, tốc độ 1× / 5× / 20× |
+| Giường (`#/bed/<n>`) | 4 mô hình × 5 mốc, diễn tiến từ đầu ca, giải thích "vì sao", nhật ký cảnh báo, ngữ cảnh ca |
 
 ```
 deploy/
-  run_local.ps1   một lệnh: export dữ liệu + build UI nếu thiếu, rồi chạy http://127.0.0.1:8000
-  backend/        FastAPI: dự báo 5 mốc, giải thích (TreeSHAP), cảnh báo theo đúng chính sách đã đánh giá,
-                  và phục vụ luôn bản build của UI (cùng origin)
-    export_bundle.py   lấy mô hình + ca demo từ repo  ->  backend/data/   (git-ignored)
-    check_extract.py   kiểm tra extract.py với samples v3, tạo file mẫu (data/examples/)
-    app/               engine.py (mô hình, cảnh báo), extract.py (sinh hiệu thô -> đặc trưng),
-                       features.py (tên/nhóm đặc trưng), main.py (API + UI)
-  frontend/       React + Vite + TypeScript, biểu đồ SVG tự vẽ, sáng/tối
+  Dockerfile          một image: UI (build bằng node) + API (python, torch CPU); không chứa dữ liệu
+  AZURE.md            hướng dẫn deploy lên Azure Container Apps (Azure for Students)
+  run_local.ps1       xem thử trên máy, chế độ replay (không chạy mô hình)
+  backend/
+    export_ward.py    repo -> data_ward/: 50 ca test, sinh hiệu 2 giây, 4 mô hình, dự báo offline để đối chiếu
+    check_engine.py   (Kaggle) engine live = dự báo offline? thời gian mỗi tick
+    fetch_bundle.py   khi container khởi động: tải bundle từ HF dataset private nếu chưa mount
+    app/  models.py   4 mô hình sau một giao diện (score, explain); Platt như uc04.tabular
+          ward.py     đồng hồ mô phỏng, chạy mô hình theo lô khi qua mốc 30 giây, cảnh báo, lịch sử, giải thích
+          feed.py     luồng Server-Sent Events, 1 tin/giây (tách riêng để đổi sang WebSocket / SignalR)
+          main.py     API + phục vụ UI
+  frontend/           React + Vite + TypeScript, biểu đồ SVG tự vẽ, sáng/tối
 ```
 
-## Chạy (local)
+## 1. Bundle (dữ liệu + mô hình)
+
+Cần các output train của các mô hình `*_v8` (Kaggle: `train_tabular.py --models logistic_v8 lgbm_v8 catboost_v8 --test-dir ...`,
+`train_tabm.py --fv8 --test-dir ...`), `data/samples_v3_test/` (tập test của `safeanes-v3`) và `data/vitaldb_full`
+(track gốc, manifest).
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File deploy
-un_local.ps1            # lần đầu: tự export dữ liệu và build UI
-powershell -ExecutionPolicy Bypass -File deploy
-un_local.ps1 -Rebuild   # sau khi train lại mô hình hoặc sửa UI
+$env:PYTHONPATH = "src;.local_deps"
+python deploy/backend/export_ward.py --work <output tabular> --work-tabm <output tabm> --cases 50
 ```
 
-Mở http://127.0.0.1:8000 (tài liệu API: `/docs`). Server chỉ nghe trên `127.0.0.1`, không mở ra mạng ngoài.
-Yêu cầu: Python 3.11 (fastapi, uvicorn, lightgbm, pandas, pyarrow; script tự dùng `.local_deps` của repo hoặc cài từ
-`backend/requirements.txt`), Node 20+ để build UI.
+Script ghi vào `deploy/backend/data_ward/`. Thư mục này nằm trong `.gitignore` vì là dữ liệu bệnh nhân VitalDB (theo thoả
+thuận sử dụng dữ liệu): không commit, không đưa vào image, không công khai.
 
-## Chi tiết từng bước (script ở trên đã làm sẵn)
+## 2. Kiểm tra engine (Kaggle)
 
-1. **Xuất mô hình và ca demo** (cần `artifacts/v3` có `lgbm_context`, `lgbm_numeric` W = 120 và `data/samples_v3`):
-   `PYTHONPATH="src;.local_deps" python deploy/backend/export_bundle.py --config configs/uc04_v3.json --work artifacts/v3 --cases 14`.
-   Ghi ra `deploy/backend/data/`: booster LightGBM dạng text, Platt, ngưỡng, chỉ số validation, 14 ca validation
-   (có đợt tụt trước rạch da, trong mổ, cả hai, không có), và các bảng so sánh v2/v3.
-2. **Build UI:** `cd deploy/frontend && npm install && npm run build` → `dist/`, được backend phục vụ tại `/`.
-3. **Sửa UI có hot reload:** chạy backend (`cd deploy/backend && uvicorn app.main:app --port 8000`) và
-   `cd deploy/frontend && npm run dev` → http://localhost:5173 (Vite chuyển `/api` sang :8000).
+Chạy `deploy/backend/check_engine.py --data <bundle>` trên Kaggle. Script đối chiếu xác suất của engine live với
+`reference/` cho mọi giường, mô hình và mốc (sai khác ≤ 1e-6), đồng thời đo thời gian một tick (50 giường × 4 mô hình).
 
-> `backend/data/` chứa dữ liệu bệnh nhân VitalDB (theo thỏa thuận sử dụng dữ liệu của VitalDB): không commit,
-> không chia sẻ ra ngoài máy.
+## 3. Xem trên máy (replay)
 
-## Trang "Dự báo": file đầu vào
+```powershell
+powershell -ExecutionPolicy Bypass -File deploy\run_local.ps1
+```
 
-- Một cột **thời gian**: số giây, `HH:MM:SS` hoặc ngày giờ. Cột **MAP động mạch xâm lấn** là bắt buộc. Nên có thêm SBP, DBP,
-  HR, SpO₂, EtCO₂, nhịp thở; nếu có NIBP thì MAP nền được tính tự động.
-- Nhận tên cột kiểu VitalDB (`Solar8000/ART_MBP`…) hoặc `map`, `sbp`, `dbp`, `hr`, `spo2`, `etco2`, `rr`. Ô trống được phép.
-- Nhập thời điểm khởi mê và rạch da theo cùng đồng hồ với cột thời gian. Thiếu thì các cột ngữ cảnh liên quan bị bỏ trống,
-  và trang sẽ báo.
-- Thử nhanh: http://127.0.0.1:8000/?example=2905 (tự nạp một ca mẫu và chạy).
+Mở http://127.0.0.1:8000 (tài liệu API: `/docs`). Ở chế độ replay, phần giải thích "vì sao" không có vì không chạy
+mô hình. Khi sửa UI có hot reload: chạy `cd deploy/frontend && npm run dev`, mở http://localhost:5173 (Vite chuyển
+`/api` sang :8000).
 
-Đặc trưng được tính bằng chính code của pipeline: `safeanes.preprocess.clean_numeric` / `grid_numeric`,
-`uc04.long_windows`, `uc04.events`. Các cột ngữ cảnh `f1a_*` được dựng lại theo định nghĩa đã đối chiếu với samples v3.
-`check_extract.py` chạy lại toàn bộ trên track Solar8000 thô của 14 ca validation (4.888 thời điểm) và so với
-samples v3:
-- **Xác suất cuối:** tương quan 0,999 với `val_predictions`; lệch trung vị 0, phân vị 95 là 0,008.
-- **Theo cột:** 48/97 cột trùng ≥ 99% số dòng. Phần lệch còn lại nằm ở thống kê cửa sổ 10–30 phút, vì pipeline loại thêm
-  nhiễu nhờ dạng sóng ART (flush, zero), mà file upload không có.
+## 4. Docker và Azure
+
+```powershell
+docker build -f deploy/Dockerfile -t safeanes-ward .
+```
+
+Chạy image (chế độ live, có chạy mô hình) trên cloud: xem [AZURE.md](AZURE.md).
 
 ## API
 
 | Endpoint | Trả về |
 |---|---|
-| `GET /api/health` | trạng thái, mô hình, số ca |
-| `GET /api/models` | mô hình, ngưỡng và chỉ số validation theo mốc |
-| `GET /api/report` | bảng v2 vs v3 theo giai đoạn, bảng độ ổn định ngưỡng |
-| `GET /api/cases` | danh sách ca demo |
-| `GET /api/cases/{id}/timeline?model=` | thời gian, sinh hiệu, xác suất 5 mốc, cảnh báo (đúng/sai), đợt tụt, mốc rạch da |
-| `GET /api/cases/{id}/explain?t=&horizon=&model=` | xác suất và đóng góp theo nhóm sinh lý / đặc trưng tại thời điểm t |
-| `POST /api/infer` | `{ "csv": "...", "anestart": "08:05", "opstart": "08:40", "baseline_map": null, "model": "lgbm_context" }` → giống timeline + `session`, `quality` (độ phủ, cảnh báo dữ liệu) |
-| `GET /api/infer/{session}/explain?t=&horizon=` | giải thích tại thời điểm t của dữ liệu đã tải (phiên lưu trong RAM, tối đa 20) |
-| `GET /api/examples`, `/api/examples/{id}.csv` | file mẫu (track Solar8000 thô của ca demo) |
-| `POST /api/predict` | `{ "features": {cột: giá trị}, "model": "lgbm_context" }` → nguy cơ 5 mốc + giải thích; dùng cho luồng dữ liệu thật |
-
-## Đúng với kết quả đã báo cáo
-
-Backend không có logic riêng. Xác suất bằng `val_predictions.parquet` của pipeline (lệch ≤ 5·10⁻⁵, do bước kẹp logit
-ở 1e-6). Cảnh báo dùng đúng luật của `uc04.alarms`: 2 dự báo liên tiếp ≥ ngưỡng, nghỉ 300 giây, phát lại chỉ sau khi
-nguy cơ xuống dưới ngưỡng. Đã kiểm tra trên 14 ca demo ở mốc 5 và 30 phút: 125/125 cảnh báo trùng thời điểm và loại
-với evaluator.
-
-## Thiết kế
-
-- **Peer:** Acumen HPI của Edwards (một chỉ số, cảnh báo ≥ 85, màn hình phụ nêu nguyên nhân) và Prescience
-  (Lundberg et al., *Nat Biomed Eng* 2018: giải thích từng thời điểm bằng SHAP).
-- **Khác biệt của SafeAnes:**
-  - Hiển thị xác suất đã hiệu chỉnh cho 5 mốc, không phải một chỉ số.
-  - Có giai đoạn trước rạch da / trong mổ, và giải thích theo nhóm sinh lý cùng ngữ cảnh của ca.
-  - Cảnh báo được đánh giá theo đợt tụt; chế độ phát lại không lộ tương lai.
-- **Biểu đồ** theo quy tắc dataviz:
-  - Không dùng 2 trục y: nguy cơ và MAP ở 2 panel chung trục thời gian.
-  - Đường 2 px, lưới mảnh.
-  - Màu trạng thái luôn đi kèm biểu tượng và chữ.
-  - Bảng màu đã qua bộ kiểm tra mù màu ở cả nền sáng lẫn tối.
-  - Có crosshair, tooltip, và bấm để tua.
+| `GET /api/health` | engine (live/replay), số giường, mô hình, số hàng đã chạy mô hình |
+| `GET /api/models` | 4 mô hình: ngưỡng, chỉ số validation và test (mô tả) theo mốc |
+| `GET /api/ward` | thông tin giường (tuổi, giới, ASA, khoa, loại mổ, rạch da, đợt tụt), tốc độ, thời gian ảo hiện tại |
+| `GET /api/ward/stream?speed=&v=` | SSE, mỗi giây: mọi giường (nguy cơ 4 mô hình × 5 mốc, cảnh báo, sinh hiệu, giai đoạn) + mẫu 2 giây mới |
+| `GET /api/beds/{bed}/history?v=&wave_s=` | một giường từ đầu ca tới hiện tại: nguy cơ, cảnh báo (đúng/sai/chờ), đợt tụt đã biết, sinh hiệu 2 giây |
+| `GET /api/beds/{bed}/explain?v=&model=&horizon=` | đóng góp theo đặc trưng / nhóm ở lần dự báo gần nhất (TabM: dùng giải thích của LightGBM để tham khảo) |

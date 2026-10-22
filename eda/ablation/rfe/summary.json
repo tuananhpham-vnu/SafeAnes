@@ -1,0 +1,62 @@
+{
+  "W": 120,
+  "n_inputs": 349,
+  "families": {
+    "map": 41,
+    "numeric": 42,
+    "context": 14,
+    "anaes": 86,
+    "vent": 39,
+    "hemo": 61,
+    "lab": 14,
+    "clinical": 52
+  },
+  "source": "349 cột đã làm sạch của `lgbm_full_v4` (`features_v8`)",
+  "fit_split": "calibration",
+  "train_rows": 84643,
+  "train_cases": 258,
+  "screen_rows": 84643,
+  "holdouts": 5,
+  "tol_auroc": 0.0005,
+  "tol_auprc": 0.002,
+  "chosen": {
+    "step": 46,
+    "n": 11,
+    "d_auroc": 0.003457989859023347,
+    "d_auprc": 0.008418065872375813,
+    "columns": [
+      "sbp_std_w120",
+      "map_current",
+      "dbp_current",
+      "f1a_map_min_m15",
+      "f1a_map_min_m30",
+      "f1a_min_since_opstart",
+      "f1a_min_since_last_event",
+      "f1b_rftn_d5",
+      "f2_ppf_cp_mean_m15",
+      "f2_lab_hct",
+      "f2_st_preop_aptt"
+    ]
+  },
+  "smallest_by_tol": {
+    "0.0005": 7,
+    "0.001": 7,
+    "0.002": 6,
+    "0.005": 6,
+    "0.01": 5
+  },
+  "path_points": [
+    157,
+    97,
+    71,
+    50,
+    40,
+    30,
+    25,
+    20,
+    15,
+    10,
+    5
+  ],
+  "validation_rows": 110830
+}

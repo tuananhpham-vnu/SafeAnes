@@ -1,0 +1,16 @@
+# Docker build context = repo root (docker build -f deploy/Dockerfile .). Whitelist: only what the image needs.
+# Patient data (deploy/backend/data_ward, data/) never enters the image: it is mounted or downloaded at start.
+*
+!deploy/Dockerfile
+!deploy/frontend/package.json
+!deploy/frontend/package-lock.json
+!deploy/frontend/index.html
+!deploy/frontend/tsconfig.json
+!deploy/frontend/vite.config.ts
+!deploy/frontend/src/
+!deploy/backend/requirements.txt
+!deploy/backend/fetch_bundle.py
+!deploy/backend/app/
+!src/uc04/__init__.py
+!src/uc04/tabm.py
+**/__pycache__

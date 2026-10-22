@@ -41,7 +41,8 @@ CONTEXT_COLS = (
     *[f"f1a_{s}_{st}_m{m}" for s in ("hr", "pp", "etco2") for m in (5, 15) for st in ("mean", "slope")],
     "f1a_min_since_opstart", "f1a_min_since_anestart", "f1a_n_prev_events", "f1a_min_since_last_event",
 )
-SIDE_PREFIXES = ("f1a_", "f1b_", "f1c_")  # columns read from <samples>/features_v5/ (uc04.loaders)
+# columns read from <samples>/features_v5/ (uc04.loaders); st_* (cohort-manifest facts) only in the packed W120 dataset
+SIDE_PREFIXES = ("f1a_", "f1b_", "f1c_", "st_")
 
 
 def window_cols(W: int, groups: Sequence[str] = ("numeric", "waveform"), ppv: str = PPV_MODEL) -> list[str]:

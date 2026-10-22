@@ -112,3 +112,14 @@ class TabMMulti:
         p = torch.cat(out).numpy().astype(np.float64) if out else np.zeros((0, len(HORIZONS)))
         p = np.clip(p, 1e-6, 1 - 1e-6)
         return np.log(p / (1 - p))
+
+
+class OneHorizon:
+    """Scores of one horizon of a TabMMulti, with the interface uc04.tabular.run_combo expects. Lives here (not in
+    scripts/train_tabm.py) so that a saved model.joblib can be loaded by other programs."""
+
+    def __init__(self, multi: TabMMulti, k: int):
+        self.multi, self.k, self.columns = multi, k, multi.columns
+
+    def score(self, X):
+        return self.multi.logits(X)[:, self.k]

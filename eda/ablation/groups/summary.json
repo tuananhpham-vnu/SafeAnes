@@ -1,0 +1,25 @@
+{
+  "W": 120,
+  "n_inputs": 349,
+  "families": {
+    "map": 41,
+    "numeric": 42,
+    "context": 14,
+    "anaes": 86,
+    "vent": 39,
+    "hemo": 61,
+    "lab": 14,
+    "clinical": 52
+  },
+  "source": "349 cột đã làm sạch của `lgbm_full_v4` (`features_v8`)",
+  "fit_split": "calibration",
+  "train_rows": 84643,
+  "train_cases": 258,
+  "screen_rows": 84643,
+  "holdouts": 5,
+  "tol_auroc": 0.0005,
+  "tol_auprc": 0.002,
+  "groups_ref_auroc": 0.8222625273831147,
+  "groups_ref_auprc": 0.3346690901361929,
+  "validation_rows": 110830
+}

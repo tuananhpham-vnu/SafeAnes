@@ -21,7 +21,8 @@ from uc04.columns import WINDOWS
 from uc04.hub import hub_from_config
 from uc04.provenance import make_provenance
 from uc04.runtime import common_args, load_data, samples_inputs, setup
-from uc04.tabular import BASE_MODELS, MODELS, TabularData, combo_dir, combo_name, model_columns, run_combo
+from uc04.tabular import (BASE_MODELS, MODELS, TabularData, combo_dir, combo_name, feature_source, model_columns,
+                          run_combo)
 
 
 def main(argv=None) -> int:
@@ -30,6 +31,8 @@ def main(argv=None) -> int:
     ap.add_argument("--windows", nargs="+", type=int)
     ap.add_argument("--horizons", nargs="+", type=int)
     ap.add_argument("--bootstrap", type=int, help="bootstrap repeats (default: evaluation.bootstrap_repeats_validation)")
+    ap.add_argument("--test-dir", help="*_v8 models only: safeanes-v3-test directory; also writes descriptive test "
+                                       "outputs (<work>/test_descriptive/, never pushed)")
     args = ap.parse_args(argv)
     cfg, samples, work, push, subset = setup(args)
     windows = args.windows or list(cfg.features.windows_seconds)
@@ -51,14 +54,18 @@ def main(argv=None) -> int:
             print(f"W={W}: nothing to do")
             continue
         cols = sorted({c for m, _ in todo for c in model_columns(cfg, m, W)})
+        sources = {feature_source(m) for m, _ in todo}
+        if len(sources) > 1:
+            raise SystemExit("models reading features_v8 (*_v8) cannot run together with the others; run them apart")
         t0 = time.time()
-        labels, feats, events = load_data(samples, cols, subset)
+        labels, feats, events = load_data(samples, cols, subset, source=sources.pop())
         data = TabularData(W, labels, feats, events)
         print(f"W={W}: loaded {sum(len(v) for v in labels.values()):,} rows x {len(cols)} columns "
               f"in {time.time() - t0:.0f} s; {len(todo)} combinations")
         for m, h in todo:
             t1 = time.time()
-            row, written = run_combo(cfg, m, data, h, work, bootstrap=boot, provenance=prov)
+            row, written = run_combo(cfg, m, data, h, work, bootstrap=boot, provenance=prov,
+                                     test_dir=args.test_dir if feature_source(m) == "v8" else None)
             rows.append(row)
             local = [f"artifacts/{p}" if p.startswith("tabular/") else p for p in written]
             hub.register(*local)
